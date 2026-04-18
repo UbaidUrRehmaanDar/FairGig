@@ -1,13 +1,12 @@
 <template>
   <div class="new-grievance-page">
     <main class="new-main">
-      <div class="page-header">
-        <div>
-          <h1>Post a Grievance</h1>
-          <p>Share your issue clearly so advocates and verifiers can take action.</p>
+        <div class="page-header">
+          <div>
+            <h1>Post a Grievance</h1>
+            <p>Share your issue clearly so advocates and verifiers can take action.</p>
+          </div>
         </div>
-        <NuxtLink to="/grievances" class="header-link">Back to Board</NuxtLink>
-      </div>
 
       <section class="form-card">
         <form class="grievance-form" novalidate @submit.prevent="submit">
@@ -347,19 +346,20 @@ const submit = async () => {
   cursor: pointer;
 }
 
-/* Material Symbols Outlined */
-.icon {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+@media (max-width: 640px) {
+  .new-grievance-page {
+    padding: 1rem 0.85rem 5.5rem;
+  }
+  .page-header {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .header-link {
+    width: 100%;
+    text-align: center;
+  }
+  .primary-button {
+    width: 100%;
+  }
 }
 </style>

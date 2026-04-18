@@ -166,6 +166,7 @@ onMounted(async () => {
 <style scoped>
 .shifts-history-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
@@ -192,14 +193,51 @@ onMounted(async () => {
   margin-top: 0.35rem;
   color: var(--fg-muted);
 }
+
+/* Primary CTA aligned with your login/register philosophy */
 .header-action {
-  text-decoration: none;
-  background: var(--fg-primary);
+  width: 18rem;
+  height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: var(--fg-primary);
   color: #f2f1ff;
+  text-decoration: none;
+  border: 1px solid transparent;
   border-radius: 9999px;
-  padding: 0.7rem 1rem;
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 1rem;
+  cursor: pointer;
+
+  transition:
+    border-radius 0ms linear,
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease;
+
+  box-shadow: var(--fg-shadow);
+}
+
+.header-action:hover {
+  border-radius: 1rem;
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  box-shadow: var(--fg-shadow);
+}
+
+.header-action:active {
+  filter: none;
+}
+
+.header-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .filters-card,
@@ -238,6 +276,10 @@ onMounted(async () => {
   color: var(--fg-muted);
   font-size: 1.2rem;
   pointer-events: none;
+  transition: color 0.2s;
+}
+.input-with-icon:focus-within .icon {
+  color: var(--fg-primary);
 }
 .input-with-icon input,
 .input-with-icon select {
@@ -249,6 +291,8 @@ onMounted(async () => {
   outline: none;
   font-family: inherit;
   padding: 0.88rem 1rem 0.88rem 2.7rem;
+  transition: box-shadow 0.2s, background-color 0.2s;
+  font-size: 16px;
 }
 .input-with-icon input:focus,
 .input-with-icon select:focus {
@@ -260,6 +304,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.65rem;
 }
 .table-header h2 {
   font-size: 1.08rem;
@@ -267,6 +312,7 @@ onMounted(async () => {
 }
 .count-pill {
   background: var(--fg-surface-muted);
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
   padding: 0.3rem 0.65rem;
   font-size: 0.76rem;
@@ -296,6 +342,12 @@ td {
 th {
   color: var(--fg-muted);
   font-weight: 700;
+}
+tbody tr {
+  transition: background-color 120ms ease;
+}
+tbody tr:hover {
+  background: color-mix(in srgb, var(--fg-primary) 4%, var(--fg-surface));
 }
 .note-cell {
   max-width: 220px;
@@ -348,6 +400,18 @@ th {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all 0.3s;
+}
+.support-fab button:hover {
+  background-color: var(--fg-primary);
+  color: #f2f1ff;
+}
+.support-fab .icon {
+  font-size: 1.5rem;
+  transition: transform 0.3s;
+}
+.support-fab button:hover .icon {
+  transform: scale(1.1);
 }
 
 @media (min-width: 900px) {
@@ -356,19 +420,68 @@ th {
   }
 }
 
-/* Material Symbols Outlined */
-.icon {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+/* Mobile */
+@media (max-width: 640px) {
+  .shifts-history-page {
+    padding: 1rem 0.85rem 5.5rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .header-action {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .header-action:hover {
+    width: 100%;
+    height: 3rem;
+    border-radius: 1rem;
+  }
+
+  .support-fab {
+    right: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .support-fab button {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-action,
+  .support-fab button,
+  .support-fab .icon,
+  tbody tr {
+    transition: none !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .header-action:hover {
+    width: 100%;
+    height: 3.2rem;
+    border-radius: 9999px;
+    filter: none;
+    transform: none;
+  }
+
+  .support-fab button:hover {
+    background: var(--fg-surface);
+    color: var(--fg-primary);
+  }
+
+  .support-fab button:hover .icon {
+    transform: none;
+  }
+
+  tbody tr:hover {
+    background: transparent;
+  }
 }
 </style>

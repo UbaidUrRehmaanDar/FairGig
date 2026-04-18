@@ -15,21 +15,9 @@
 
         <div class="social-proof">
           <div class="avatars" aria-hidden="true">
-            <img
-              class="avatar-photo"
-              src="https://picsum.photos/seed/sea-register-1/80/80"
-              alt="Community member profile photo"
-            />
-            <img
-              class="avatar-photo"
-              src="https://picsum.photos/seed/flower-register-2/80/80"
-              alt="Community member profile photo"
-            />
-            <img
-              class="avatar-photo"
-              src="https://picsum.photos/seed/mountain-register-3/80/80"
-              alt="Community member profile photo"
-            />
+            <img class="avatar-photo" src="https://picsum.photos/seed/sea-register-1/80/80" alt="Community member profile photo" />
+            <img class="avatar-photo" src="https://picsum.photos/seed/flower-register-2/80/80" alt="Community member profile photo" />
+            <img class="avatar-photo" src="https://picsum.photos/seed/mountain-register-3/80/80" alt="Community member profile photo" />
             <div class="avatar-plus">+10k</div>
           </div>
           <p>Trusted by 10,000+ gig professionals and partners.</p>
@@ -69,9 +57,7 @@
                 aria-describedby="full-name-error"
               />
             </div>
-            <p v-if="errors.fullName" id="full-name-error" class="field-error">
-              {{ errors.fullName }}
-            </p>
+            <p v-if="errors.fullName" id="full-name-error" class="field-error">{{ errors.fullName }}</p>
           </div>
 
           <div class="input-group">
@@ -110,9 +96,7 @@
                   <span class="icon">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
                 </button>
               </div>
-              <p v-if="errors.password" id="password-error" class="field-error">
-                {{ errors.password }}
-              </p>
+              <p v-if="errors.password" id="password-error" class="field-error">{{ errors.password }}</p>
             </div>
 
             <div class="input-group">
@@ -132,9 +116,7 @@
                   :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
                   @click="toggleShowConfirmPassword"
                 >
-                  <span class="icon">{{
-                    showConfirmPassword ? 'visibility_off' : 'visibility'
-                  }}</span>
+                  <span class="icon">{{ showConfirmPassword ? 'visibility_off' : 'visibility' }}</span>
                 </button>
               </div>
               <p v-if="errors.confirmPassword" id="confirm-password-error" class="field-error">
@@ -144,16 +126,16 @@
           </div>
 
           <div class="terms-row">
-  <label class="switch" for="terms">
-    <input id="terms" v-model="acceptedTerms" type="checkbox" />
-    <span class="slider"></span>
-  </label>
+            <label class="switch" for="terms">
+              <input id="terms" v-model="acceptedTerms" type="checkbox" />
+              <span class="slider"></span>
+            </label>
 
-  <label class="terms-label" for="terms">
-    I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>.
-  </label>
-</div>
-<p v-if="errors.terms" class="field-error terms-error">{{ errors.terms }}</p>
+            <label class="terms-label" for="terms">
+              I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>.
+            </label>
+          </div>
+          <p v-if="errors.terms" class="field-error terms-error">{{ errors.terms }}</p>
 
           <p v-if="statusMessage" :class="['form-message', statusType]">{{ statusMessage }}</p>
 
@@ -221,7 +203,6 @@ const errors = ref<{
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
 }
-
 const toggleShowConfirmPassword = () => {
   showConfirmPassword.value = !showConfirmPassword.value
 }
@@ -232,7 +213,6 @@ const applyTheme = (mode: 'light' | 'dark') => {
   localStorage.setItem('fg_theme', mode)
   isDark.value = mode === 'dark'
 }
-
 const toggleTheme = () => {
   applyTheme(isDark.value ? 'light' : 'dark')
 }
@@ -244,29 +224,23 @@ const validateForm = () => {
   errors.value.confirmPassword = ''
   errors.value.terms = ''
 
-  if (!fullName.value) {
-    errors.value.fullName = 'Full name is required.'
-  }
-
+  if (!fullName.value) errors.value.fullName = 'Full name is required.'
   if (!email.value) {
     errors.value.email = 'Email is required.'
   } else {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)
     if (!emailOk) errors.value.email = 'Please enter a valid email address.'
   }
-
   if (!password.value) {
     errors.value.password = 'Password is required.'
   } else if (password.value.length < 8) {
     errors.value.password = 'Password must be at least 8 characters.'
   }
-
   if (!confirmPassword.value) {
     errors.value.confirmPassword = 'Please confirm your password.'
   } else if (confirmPassword.value !== password.value) {
     errors.value.confirmPassword = 'Passwords do not match.'
   }
-
   if (!acceptedTerms.value) {
     errors.value.terms = 'You must accept Terms & Conditions to continue.'
   }
@@ -284,7 +258,6 @@ const isRateLimitError = (error: any) => {
   const status = Number(error?.status || 0)
   const message = String(error?.message || '').toLowerCase()
   const code = String(error?.code || '').toLowerCase()
-
   return (
     status === 429 ||
     message.includes('rate limit') ||
@@ -297,7 +270,6 @@ const isRateLimitError = (error: any) => {
 const isAlreadyRegisteredError = (error: any) => {
   const message = String(error?.message || '').toLowerCase()
   const code = String(error?.code || '').toLowerCase()
-
   return (
     (message.includes('already') && message.includes('registered')) ||
     code.includes('email_exists') ||
@@ -307,7 +279,6 @@ const isAlreadyRegisteredError = (error: any) => {
 
 const handleRegister = async () => {
   if (isRegistering.value) return
-
   statusMessage.value = ''
   if (!validateForm()) return
 
@@ -321,13 +292,13 @@ const handleRegister = async () => {
           full_name: fullName.value,
           role: 'worker'
         },
-        emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/confirm` : undefined
+        emailRedirectTo:
+          typeof window !== 'undefined' ? `${window.location.origin}/confirm` : undefined
       }
     })
 
     if (error) {
       if (isRateLimitError(error) || isAlreadyRegisteredError(error)) {
-        // If signup is rate-limited but account already exists, try signing in directly.
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: email.value.toLowerCase(),
           password: password.value
@@ -396,6 +367,7 @@ onMounted(async () => {
 .register-container {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background-color: var(--fg-bg);
   color: var(--fg-text);
@@ -642,6 +614,7 @@ onMounted(async () => {
   color: var(--fg-text);
   outline: none;
   transition: box-shadow 0.2s, background-color 0.2s;
+  font-size: 16px; /* iOS zoom fix */
 }
 
 .input-with-icon input:focus {
@@ -758,17 +731,7 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
-
-.terms-row label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  line-height: 1.35;
-  cursor: pointer;
-  margin: 0;
-}
-
-terms-label {
+.terms-label {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--fg-muted);
@@ -788,62 +751,6 @@ terms-label {
 
 .terms-error {
   margin-top: -0.5rem;
-}
-
-.terms-row a {
-  color: var(--fg-primary);
-  font-weight: 700;
-  text-decoration: none;
-}
-.terms-row a:hover {
-  text-decoration: underline;
-}
-
-.terms-error {
-  margin-top: -0.5rem;
-}
-
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 2.5rem;
-  height: 1.25rem;
-  margin-top: 0.1rem;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background-color: var(--fg-border);
-  border-radius: 9999px;
-  transition: 0.25s ease;
-}
-
-.slider:before {
-  position: absolute;
-  content: '';
-  height: 1rem;
-  width: 1rem;
-  left: 2px;
-  bottom: 2px;
-  background-color: var(--fg-surface);
-  border-radius: 50%;
-  transition: 0.25s ease;
-}
-
-.toggle-switch input:checked + .slider {
-  background-color: var(--fg-primary);
-}
-
-.toggle-switch input:checked + .slider:before {
-  transform: translateX(1.25rem);
 }
 
 .actions {
@@ -959,21 +866,112 @@ terms-label {
   transform: scale(1.1);
 }
 
+/* Motion reduce */
 @media (prefers-reduced-motion: reduce) {
-  .primary-button {
-    transition: background-color 120ms linear, box-shadow 120ms ease, border-radius 120ms ease;
+  .primary-button,
+  .theme-toggle,
+  .support-fab button,
+  .support-fab .icon {
+    transition: none !important;
+  }
+}
+
+/* Mobile-first fixes */
+@media (max-width: 1023px) {
+  .right-section {
+    align-items: flex-start;
+    padding: 1rem 1rem 5.75rem;
+  }
+
+  .form-container {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .mobile-logo {
+    margin-bottom: 1.5rem;
+  }
+
+  .theme-toggle {
+    top: 0.25rem;
+    right: 0.25rem;
+  }
+
+  .form-header {
+    margin-bottom: 1.4rem;
+  }
+
+  .form-header h2 {
+    font-size: clamp(1.45rem, 5vw, 1.875rem);
+    line-height: 1.2;
+  }
+
+  .form-header p {
+    font-size: 0.92rem;
+  }
+
+  .register-form {
+    gap: 1rem;
+  }
+
+  .terms-row {
+    padding: 0;
+  }
+
+  .login-link {
+    margin-top: 1.5rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .support-fab {
+    right: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .support-fab button {
+    width: 3.1rem;
+    height: 3.1rem;
   }
 }
 
 @media (max-width: 480px) {
+  .right-section {
+    padding: 0.9rem 0.85rem 5.5rem;
+  }
+
   .primary-button,
   .primary-button.is-loading,
   .primary-button:disabled {
-    width: min(18rem, 92vw);
+    width: 100%;
+    max-width: 100%;
   }
 
   .primary-button:not(:disabled):hover {
-    width: min(20.5rem, 96vw);
+    width: 100%;
+    height: 3rem;
+    border-radius: 1rem;
+  }
+}
+
+/* Avoid hover jitter on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .primary-button:not(:disabled):hover {
+    width: 100%;
+    height: 3.2rem;
+    border-radius: 9999px;
+    filter: none;
+  }
+
+  .theme-toggle:hover,
+  .support-fab button:hover {
+    transform: none;
+    filter: none;
+    background-color: var(--fg-surface);
+    color: var(--fg-primary);
+  }
+
+  .support-fab button:hover .icon {
+    transform: none;
   }
 }
 
@@ -989,6 +987,8 @@ terms-label {
   }
   .right-section {
     width: 50%;
+    align-items: center;
+    padding: 2rem;
   }
   .mobile-logo {
     display: none;
@@ -996,23 +996,5 @@ terms-label {
   .form-header {
     text-align: left;
   }
-}
-
-/* Material Symbols Outlined */
-.icon {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
 }
 </style>

@@ -626,4 +626,24 @@ input:checked + .slider:before {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 640px) {
+  .settings-main {
+    padding: 1rem 0.85rem 5.5rem;
+  }
+  .page-header {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .header-action {
+    width: 100%;
+    text-align: center;
+  }
+  .actions {
+    flex-direction: column;
+  }
+  .actions button {
+    width: 100%;
+  }
+}
 </style>

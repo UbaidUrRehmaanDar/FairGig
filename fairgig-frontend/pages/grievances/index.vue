@@ -388,19 +388,17 @@ await load()
   }
 }
 
-/* Material Symbols Outlined */
-.icon {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+@media (max-width: 640px) {
+  .grievance-board-page {
+    padding: 1rem 0.85rem 5.5rem;
+  }
+  .page-header {
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .header-action {
+    width: 100%;
+    text-align: center;
+  }
 }
 </style>

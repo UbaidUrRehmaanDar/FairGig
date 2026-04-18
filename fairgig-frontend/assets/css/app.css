@@ -1,6 +1,11 @@
 :root {
   --fg-form-font-weight: 600;
 
+  /* Global Layout Spacing */
+  --fg-page-padding: 2rem;
+  --fg-mobile-padding: 1rem;
+  --fg-mobile-nav-height: 5rem;
+
   /* Light theme (existing palette) */
   --fg-bg: #f5f7f9;
   --fg-surface: #ffffff;
@@ -108,5 +113,35 @@ select:has(option:checked[disabled][value='']) {
   .primary-button:hover:not(:disabled):not(.is-loading) {
     animation: none;
     border-radius: 1rem !important;
+  }
+}
+
+/* Material Symbols Global */
+.material-symbols-outlined,
+.icon {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Global Responsive Helpers */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
   }
 }

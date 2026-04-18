@@ -6,7 +6,6 @@
           <h1>Log a Shift</h1>
           <p>Add your shift earnings and optionally upload a screenshot for verification.</p>
         </div>
-        <NuxtLink to="/dashboard/worker" class="header-link">Back to Dashboard</NuxtLink>
       </div>
 
       <section class="form-card">
@@ -132,21 +131,31 @@
         </form>
       </section>
 
-      <section class="upload-card" v-if="lastShiftId">
+      <section class="upload-card in-form">
         <h2>Upload Earnings Screenshot (Optional)</h2>
-        <p>Attach proof for faster verification workflow.</p>
+        <p class="helper-text">
+          You can choose file now. Upload starts automatically after shift is logged.
+        </p>
 
         <div class="upload-row">
-          <input type="file" accept="image/*" @change="onFileChange" />
-          <button
-            type="button"
-            class="ghost-btn"
-            :disabled="!selectedFile || isUploading"
-            @click="uploadScreenshot"
-          >
-            {{ isUploading ? 'Uploading...' : 'Upload for Verification' }}
-          </button>
+          <label class="file-picker" for="screenshot-file">
+            <span class="icon">upload_file</span>
+            <span>{{ selectedFile ? 'Change screenshot' : 'Choose screenshot' }}</span>
+          </label>
+
+          <input
+            id="screenshot-file"
+            class="file-input-hidden"
+            type="file"
+            accept="image/*"
+            :disabled="isSubmitting || isUploading"
+            @change="onFileChange"
+          />
         </div>
+
+        <p class="file-name" :class="{ empty: !selectedFile }">
+          {{ selectedFile ? `Selected: ${selectedFile.name}` : 'No file selected' }}
+        </p>
       </section>
     </main>
 
@@ -312,6 +321,7 @@ const uploadScreenshot = async () => {
 <style scoped>
 .log-shift-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
@@ -338,14 +348,37 @@ const uploadScreenshot = async () => {
   margin-top: 0.35rem;
   color: var(--fg-muted);
 }
+
+/* Secondary top action with your hover color inversion */
 .header-link {
   text-decoration: none;
   background: var(--fg-surface-muted);
   color: var(--fg-text);
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
   padding: 0.65rem 0.9rem;
   font-size: 0.86rem;
   font-weight: 700;
+  transition:
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+.header-link:hover {
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  transform: translateY(-1px);
+  box-shadow: var(--fg-shadow);
+}
+.header-link:active {
+  transform: translateY(0);
+}
+.header-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .form-card,
@@ -389,6 +422,10 @@ const uploadScreenshot = async () => {
   color: var(--fg-muted);
   font-size: 1.2rem;
   pointer-events: none;
+  transition: color 0.2s;
+}
+.input-with-icon:focus-within .icon {
+  color: var(--fg-primary);
 }
 .input-with-icon input,
 .input-with-icon select,
@@ -401,6 +438,7 @@ const uploadScreenshot = async () => {
   outline: none;
   font-family: inherit;
   padding: 0.9rem 1rem 0.9rem 2.75rem;
+  font-size: 16px;
 }
 .input-with-icon textarea {
   resize: vertical;
@@ -442,21 +480,58 @@ const uploadScreenshot = async () => {
   justify-content: center;
   padding-top: 0.4rem;
 }
+
+/* Primary button: same as your auth pages */
 .primary-button {
   width: 18rem;
   height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: var(--fg-primary);
+  color: #f2f1ff;
   border: none;
   border-radius: 9999px;
-  background: var(--fg-primary);
-  color: #f2f1ff;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
+
+  transition:
+    width 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms linear,
+    box-shadow 140ms ease;
+
   box-shadow: var(--fg-shadow);
 }
+
+.primary-button:not(:disabled):hover {
+  width: 20.5rem;
+  height: 2.9rem;
+  border-radius: 1rem;
+  filter: brightness(0.95);
+  box-shadow: var(--fg-shadow);
+}
+
+.primary-button:not(:disabled):active {
+  filter: brightness(0.9);
+}
+
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
+}
+
 .primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
+  width: 18rem;
+  height: 3.2rem;
+  border-radius: 9999px;
   background: var(--fg-muted);
   box-shadow: var(--fg-shadow);
 }
@@ -476,20 +551,52 @@ const uploadScreenshot = async () => {
   flex-wrap: wrap;
   align-items: center;
 }
+.file-input {
+  max-width: 100%;
+}
+.file-name {
+  margin-top: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+}
+
+/* Secondary action polish */
 .ghost-btn {
-  border: none;
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
   background: var(--fg-surface-muted);
   color: var(--fg-text);
   font-weight: 700;
   padding: 0.55rem 0.9rem;
   cursor: pointer;
+  transition:
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+.ghost-btn:hover:not(:disabled) {
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  transform: translateY(-1px);
+  box-shadow: var(--fg-shadow);
+}
+.ghost-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.ghost-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 .ghost-btn:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+  transform: none;
 }
 
+/* Support FAB */
 .support-fab {
   position: fixed;
   bottom: 2rem;
@@ -508,27 +615,154 @@ const uploadScreenshot = async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all 0.3s;
+}
+.support-fab button:hover {
+  background-color: var(--fg-primary);
+  color: #f2f1ff;
+}
+.support-fab .icon {
+  font-size: 1.5rem;
+  transition: transform 0.3s;
+}
+.support-fab button:hover .icon {
+  transform: scale(1.1);
 }
 
+/* Responsive */
 @media (min-width: 760px) {
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* Material Symbols Outlined */
-.icon {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+@media (max-width: 640px) {
+  .log-shift-page {
+    padding: 1rem 0.85rem 5.5rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .header-link {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .primary-button,
+  .primary-button.is-loading,
+  .primary-button:disabled {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .primary-button:not(:disabled):hover {
+    width: 100%;
+    height: 3rem;
+    border-radius: 1rem;
+  }
+
+  .support-fab {
+    right: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .support-fab button {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button,
+  .header-link,
+  .ghost-btn,
+  .support-fab button,
+  .support-fab .icon {
+    transition: none !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .primary-button:not(:disabled):hover {
+    width: 100%;
+    height: 3.2rem;
+    border-radius: 9999px;
+    filter: none;
+  }
+
+  .header-link:hover,
+  .ghost-btn:hover:not(:disabled),
+  .support-fab button:hover {
+    transform: none;
+    box-shadow: var(--fg-shadow);
+  }
+
+  .support-fab button:hover {
+    background: var(--fg-surface);
+    color: var(--fg-primary);
+  }
+
+  .support-fab button:hover .icon {
+    transform: none;
+  }
+}
+
+.file-input-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 0.1px;
+  height: 0.1px;
+  pointer-events: none;
+}
+
+.file-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--fg-border);
+  border-radius: 9999px;
+  background: var(--fg-surface-muted);
+  color: var(--fg-text);
+  font-weight: 700;
+  font-size: 0.86rem;
+  padding: 0.58rem 0.95rem;
+  cursor: pointer;
+  transition:
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.file-picker:hover {
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  transform: translateY(-1px);
+  box-shadow: var(--fg-shadow);
+}
+
+.file-picker:active {
+  transform: translateY(0);
+}
+
+.file-name {
+  margin-top: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--fg-text);
+  background: var(--fg-surface-muted);
+  border: 1px solid var(--fg-border);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  word-break: break-word;
+}
+
+.file-name.empty {
+  color: var(--fg-muted);
 }
 </style>

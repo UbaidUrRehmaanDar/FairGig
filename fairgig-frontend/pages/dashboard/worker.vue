@@ -300,7 +300,6 @@ onMounted(async () => {
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
-  padding: 2rem;
 }
 
 .dashboard-main {
@@ -784,6 +783,25 @@ th {
 }
 
 /* Responsive */
+@media (max-width: 679px) {
+  .worker-dashboard-page {
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-action {
+    width: 100%;
+    max-width: none;
+  }
+  .page-header h1 {
+    font-size: 1.75rem;
+  }
+  .summary-card {
+    padding: 0.85rem;
+  }
+}
+
 @media (min-width: 680px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

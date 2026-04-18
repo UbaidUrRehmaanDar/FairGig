@@ -806,21 +806,127 @@ onMounted(async () => {
   }
 }
 
-/* Material Symbols Outlined */
-.icon {
-  font-family: 'Material Symbols Outlined';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  font-feature-settings: 'liga';
-  -webkit-font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
+/* ===== Mobile compatibility patch ===== */
+@media (max-width: 1023px) {
+  .login-container {
+    min-height: 100dvh;
+  }
+
+  .right-section {
+    width: 100%;
+    align-items: flex-start;
+    padding: 1rem 1rem 5.75rem; /* bottom space so FAB never overlaps form CTA */
+  }
+
+  .form-container {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .mobile-logo {
+    margin-bottom: 1.5rem;
+  }
+
+  .theme-toggle {
+    top: 0.25rem;
+    right: 0.25rem;
+  }
+
+  .form-header {
+    margin-bottom: 1.4rem;
+  }
+
+  .form-header h2 {
+    font-size: clamp(1.45rem, 5vw, 1.875rem);
+    line-height: 1.2;
+  }
+
+  .form-header p {
+    font-size: 0.92rem;
+  }
+
+  .login-form {
+    gap: 1rem;
+  }
+
+  .input-with-icon input {
+    min-height: 3rem;
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+  }
+
+  .label-container {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .label-container a {
+    margin-left: auto;
+  }
+
+  .remember-me {
+    padding: 0;
+  }
+
+  .actions {
+    padding-top: 0.75rem;
+  }
+
+  .signup-link {
+    margin-top: 1.5rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .support-fab {
+    right: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .support-fab button {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .right-section {
+    padding: 0.9rem 0.85rem 5.5rem;
+  }
+
+  .form-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .primary-button,
+  .primary-button.is-loading,
+  .primary-button:disabled {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* keep your hover philosophy but avoid overflow on tiny screens */
+  .primary-button:not(:disabled):hover {
+    width: 100%;
+    height: 3rem;
+    border-radius: 1rem;
+  }
+}
+
+/* Optional: avoid any hover-only jitter on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .primary-button:not(:disabled):hover {
+    width: 100%;
+    height: 3.2rem;
+    border-radius: 9999px;
+    filter: none;
+  }
+
+  .support-fab button:hover {
+    background-color: var(--fg-surface);
+    color: var(--fg-primary);
+  }
+
+  .support-fab button:hover .icon {
+    transform: none;
+  }
 }
 </style>

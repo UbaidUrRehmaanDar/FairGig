@@ -1,5 +1,17 @@
 # Project Log
 
+## 2026-04-18 - Frontend-Backend Integration Contract Documentation
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified.
+- Added comprehensive integration guide for frontend developers at `fairgig-backend/docs/frontend-backend-integration.md`.
+- Document includes all currently implemented backend phases and contracts:
+  - Service setup and runtime base URLs for Core API and Anomaly API.
+  - JWT auth flow, role enforcement rules, and common error responses.
+  - Phase-wise endpoint details (Phase 1 through Phase 5) with request/response examples.
+  - Full endpoint catalog table with auth and role requirements.
+  - Seed script behavior and run instructions for demo data and city median refresh.
+  - Frontend integration checklist and known backend notes to reduce integration issues.
+
 ## 2026-04-18 - Phase 3 Grievances and Analytics Complete
 - Name: Rehan Abrar
 - Scope locked to backend only; no files under `fairgig-frontend/` were modified.
