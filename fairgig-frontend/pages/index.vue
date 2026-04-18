@@ -7,6 +7,7 @@
       <NuxtLink to="/register">Register</NuxtLink>
       <NuxtLink to="/dashboard/worker">Worker Dashboard</NuxtLink>
       <NuxtLink to="/grievances">Grievance Board</NuxtLink>
+      <NuxtLink to="/grievances"> Ref </NuxtLink>
     </div>
   </section>
 </template>

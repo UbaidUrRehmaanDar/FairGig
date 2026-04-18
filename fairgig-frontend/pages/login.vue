@@ -14,23 +14,21 @@
 
         <div class="social-proof">
           <div class="avatars" aria-hidden="true">
-            <!-- Use proper, non-AI, simple avatar icons (inline SVG) -->
-            <span class="avatar-icon" title="Professional">
-              <svg viewBox="0 0 24 24" role="img" aria-label="Professional avatar">
-                <path
-                  d="M12 12.2c2.7 0 4.9-2.2 4.9-4.9S14.7 2.4 12 2.4 7.1 4.6 7.1 7.3s2.2 4.9 4.9 4.9Zm0 2.2c-4 0-7.5 2.2-9.2 5.5-.3.6.1 1.3.8 1.3h16.8c.7 0 1.1-.7.8-1.3-1.7-3.3-5.2-5.5-9.2-5.5Z"
-                />
-              </svg>
-            </span>
-
-            <span class="avatar-icon" title="Professional">
-              <svg viewBox="0 0 24 24" role="img" aria-label="Professional avatar">
-                <path
-                  d="M12 12.2c2.7 0 4.9-2.2 4.9-4.9S14.7 2.4 12 2.4 7.1 4.6 7.1 7.3s2.2 4.9 4.9 4.9Zm0 2.2c-4 0-7.5 2.2-9.2 5.5-.3.6.1 1.3.8 1.3h16.8c.7 0 1.1-.7.8-1.3-1.7-3.3-5.2-5.5-9.2-5.5Z"
-                />
-              </svg>
-            </span>
-
+            <img
+              class="avatar-photo"
+              src="https://picsum.photos/seed/sea1/80/80"
+              alt="Community member profile photo"
+            />
+            <img
+              class="avatar-photo"
+              src="https://picsum.photos/seed/flower2/80/80"
+              alt="Community member profile photo"
+            />
+            <img
+              class="avatar-photo"
+              src="https://picsum.photos/seed/mountain3/80/80"
+              alt="Community member profile photo"
+            />
             <div class="avatar-plus">+2k</div>
           </div>
           <p>Joined by 2,000+ gig professionals this week.</p>
@@ -48,13 +46,20 @@
           <p>Please enter your credentials to continue.</p>
         </div>
 
-        <form class="login-form" @submit.prevent="handleLogin">
+        <form class="login-form" novalidate @submit.prevent="handleLogin">
           <div class="input-group">
             <label for="email">Email Address</label>
             <div class="input-with-icon">
               <span class="icon">email</span>
-              <input id="email" v-model="email" type="email" required />
+              <input
+                id="email"
+                v-model.trim="email"
+                type="email"
+                :aria-invalid="!!errors.email"
+                aria-describedby="email-error"
+              />
             </div>
+            <p v-if="errors.email" id="email-error" class="field-error">{{ errors.email }}</p>
           </div>
 
           <div class="input-group">
@@ -65,13 +70,12 @@
 
             <div class="input-with-icon">
               <span class="icon">lock</span>
-
-              <!-- Keep the button visually *inside* the field by sharing the same wrapper + padding -->
               <input
                 id="password"
-                v-model="password"
+                v-model.trim="password"
                 :type="showPassword ? 'text' : 'password'"
-                required
+                :aria-invalid="!!errors.password"
+                aria-describedby="password-error"
               />
 
               <button
@@ -83,53 +87,31 @@
                 <span class="icon">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>
+            <p v-if="errors.password" id="password-error" class="field-error">
+              {{ errors.password }}
+            </p>
           </div>
 
           <div class="remember-me">
             <div class="toggle-switch">
-              <input type="checkbox" />
+              <input id="remember-device" v-model="rememberDevice" type="checkbox" />
               <div class="slider"></div>
             </div>
-            <span>Remember device</span>
+            <label for="remember-device">Remember device</label>
           </div>
 
           <div class="actions">
             <button
               type="submit"
               class="primary-button"
-              :class="{
-                'is-hover': isHoveringLogin,
-                'is-loading': isLoggingIn
-              }"
+              :class="{ 'is-loading': isLoggingIn }"
               :disabled="isLoggingIn"
-              @mouseenter="onLoginEnter"
-              @mouseleave="onLoginLeave"
             >
               <span v-if="!isLoggingIn">Login</span>
               <span v-else>Authenticating...</span>
             </button>
           </div>
         </form>
-
-        <div class="sso-divider">
-          <div class="line"></div>
-          <span>Or continue with</span>
-          <div class="line"></div>
-        </div>
-
-        <div class="sso-buttons">
-          <button>
-            <img
-              alt="Google logo icon"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZraQLEja8plyQCCa5yetTP_cFOxzf64UdGJxy2XT6R6VAu77keVgRihM8FHV1Osq0mdrVHdssMNhC29ex1rVY3bLKI_QLLhZFIvxM1oEc_g2F7HXK38-zg8mbu6RrP_g0DzeP-M0TM6HESOBGKZN7go772_qXWcMQ2TB1BeeHvTUMkgt8FPMAcxu3ZMdSJt8rc5Xy-31S3zd5-09fpzaAp79aUGl7s5L0ngTIBpaTrWUjZ7iwMU8GASd_m_gkLTbc5jwVNLxpMJE"
-            />
-            <span>Google</span>
-          </button>
-          <button>
-            <span class="icon">fingerprint</span>
-            <span>Biometrics</span>
-          </button>
-        </div>
 
         <div class="signup-link">
           <p>New to the platform? <a href="/register">Join the community</a></p>
@@ -150,11 +132,14 @@ import { ref } from 'vue'
 
 const email = ref('')
 const password = ref('')
+const rememberDevice = ref(false)
 const isLoggingIn = ref(false)
-
 const showPassword = ref(false)
 
-const isHoveringLogin = ref(false)
+const errors = ref<{ email: string; password: string }>({
+  email: '',
+  password: ''
+})
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -162,22 +147,35 @@ const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
 }
 
-const onLoginEnter = () => {
-  if (!isLoggingIn.value) isHoveringLogin.value = true
-}
-const onLoginLeave = () => {
-  isHoveringLogin.value = false
+const validateForm = () => {
+  errors.value.email = ''
+  errors.value.password = ''
+
+  if (!email.value) {
+    errors.value.email = 'Email is required.'
+  } else {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)
+    if (!emailOk) errors.value.email = 'Please enter a valid email address.'
+  }
+
+  if (!password.value) {
+    errors.value.password = 'Password is required.'
+  }
+
+  return !errors.value.email && !errors.value.password
 }
 
 const handleLogin = async () => {
   if (isLoggingIn.value) return
 
+  if (!validateForm()) return
+
   isLoggingIn.value = true
   try {
     await sleep(1200)
+    // TODO: integrate real auth API here
   } finally {
     isLoggingIn.value = false
-    isHoveringLogin.value = false
   }
 }
 </script>
@@ -201,10 +199,40 @@ const handleLogin = async () => {
   flex-direction: column;
   justify-content: space-between;
   padding: 3rem;
-  background-color: #0545ef;
   color: #f2f1ff;
   overflow: hidden;
+
+  /* image + dark fallback */
+  background:
+    linear-gradient(rgba(5, 69, 239, 0.62), rgba(5, 69, 239, 0.62)),
+    url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80')
+      center / cover no-repeat;
 }
+
+.left-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 500px at -10% -20%, rgba(255, 255, 255, 0.22), transparent 55%),
+    radial-gradient(900px 500px at 120% 120%, rgba(0, 0, 0, 0.25), transparent 60%);
+  mix-blend-mode: soft-light;
+}
+
+.left-section::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(3, 29, 120, 0.25) 0%,
+    rgba(3, 29, 120, 0.08) 45%,
+    rgba(2, 18, 72, 0.35) 100%
+  );
+}
+
 
 .left-section .content {
   position: relative;
@@ -249,23 +277,15 @@ const handleLogin = async () => {
   align-items: center;
 }
 
-.avatar-icon {
+.avatar-photo {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
   border: 2px solid #0545ef;
-  background: rgba(255, 255, 255, 0.18);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 0.75rem; /* cancels the -0.75rem container shift visually */
-}
-
-.avatar-icon svg {
-  width: 1.4rem;
-  height: 1.4rem;
-  fill: #f2f1ff;
-  opacity: 0.95;
+  object-fit: cover;
+  margin-left: 0.75rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  background: #c9d4ff;
 }
 
 .avatar-plus {
@@ -387,7 +407,6 @@ const handleLogin = async () => {
 
 .input-with-icon input {
   width: 100%;
-  /* Slightly more right padding so the eye button sits *inside* without overlapping text */
   padding: 1rem 3.25rem 1rem 3rem;
   background-color: #eef1f3;
   border: none;
@@ -404,6 +423,20 @@ const handleLogin = async () => {
 .input-with-icon input:focus {
   box-shadow: 0 0 0 2px rgba(5, 69, 239, 0.2);
   background-color: #ffffff;
+}
+
+.input-with-icon input[aria-invalid='true'] {
+  box-shadow: 0 0 0 2px rgba(217, 45, 32, 0.2);
+  background-color: #fff6f6;
+}
+
+.field-error {
+  margin-top: 0.25rem;
+  margin-left: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d92d20;
+  line-height: 1.2;
 }
 
 .icon-button {
@@ -430,6 +463,14 @@ const handleLogin = async () => {
   align-items: center;
   gap: 0.75rem;
   padding: 0 0.25rem;
+}
+
+.remember-me label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #595c5e;
+  margin: 0;
+  cursor: pointer;
 }
 
 .toggle-switch {
@@ -469,61 +510,57 @@ const handleLogin = async () => {
   transition: 0.25s ease;
 }
 
-input:checked + .slider {
+.toggle-switch input:checked + .slider {
   background-color: #0545ef;
 }
 
-input:checked + .slider:before {
+.toggle-switch input:checked + .slider:before {
   transform: translateX(1.25rem);
-}
-
-.remember-me span {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #595c5e;
 }
 
 .actions {
   padding-top: 1rem;
+  display: flex;
+  justify-content: center;
 }
 
-/* Smooth, manually-controlled primary button animation:
-   - default: pill
-   - hover: via .is-hover (set by mouseenter/mouseleave)
-   - loading: morphs into rounded-rectangle smoothly
-*/
 .primary-button {
-  width: 100%;
+  width: 18rem;
+  height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   background-color: #0545ef;
   color: #f2f1ff;
-  padding: 0.9rem 1rem;
-  border-radius: 9999px; /* pill */
+  border: none;
+  border-radius: 9999px;
   font-weight: 700;
   font-size: 1rem;
-  border: none;
   cursor: pointer;
 
-  /* GPU-friendly transitions */
-  transform: translateZ(0);
-  will-change: transform, box-shadow, border-radius;
   transition:
-    background-color 180ms ease,
-    transform 180ms ease,
-    box-shadow 220ms ease,
-    border-radius 420ms cubic-bezier(0.2, 0.9, 0.2, 1),
-    filter 180ms ease;
+    width 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms linear,
+    box-shadow 140ms ease;
 
   box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
 }
 
-.primary-button.is-hover {
+.primary-button:not(:disabled):hover {
+  width: 20.5rem;
+  height: 2.9rem;
+  border-radius: 1rem;
   background-color: #003bd4;
-  transform: translateY(-1px);
   box-shadow: 0 16px 28px -10px rgba(5, 69, 239, 0.35);
 }
 
-.primary-button:active {
-  transform: translateY(0px) scale(0.99);
+.primary-button:not(:disabled):active {
+  background-color: #0033bb;
 }
 
 .primary-button:focus-visible {
@@ -533,90 +570,32 @@ input:checked + .slider:before {
     0 16px 28px -10px rgba(5, 69, 239, 0.35);
 }
 
-/* "Logging in" state: morph pill -> rounded-rectangle smoothly */
 .primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
+  width: 18rem;
+  height: 3.2rem;
+  border-radius: 9999px;
   background-color: #595c5e;
-  border-radius: 1rem; /* less pill, more long rounded corners */
-  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
-  transform: none;
-  filter: saturate(0.9);
-}
-
-/* Safety: if hover class sticks during loading, keep loading visuals */
-.primary-button.is-loading.is-hover {
-  background-color: #595c5e;
-  transform: none;
   box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .primary-button {
-    transition: background-color 180ms ease, box-shadow 220ms ease, border-radius 250ms ease;
-  }
-  .primary-button.is-hover {
-    transform: none;
+    transition: background-color 120ms linear, box-shadow 120ms ease, border-radius 120ms ease;
   }
 }
 
-.sso-divider {
-  margin-top: 2.5rem;
-  position: relative;
-  margin-bottom: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+@media (max-width: 480px) {
+  .primary-button,
+  .primary-button.is-loading,
+  .primary-button:disabled {
+    width: min(18rem, 92vw);
+  }
 
-.sso-divider .line {
-  width: 100%;
-  border-top: 1px solid rgba(171, 173, 175, 0.15);
-}
-
-.sso-divider span {
-  background-color: #f5f7f9;
-  padding: 0 1rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #595c5e;
-  font-weight: 700;
-}
-
-.sso-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.sso-buttons button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background-color: #ffffff;
-  border: 1px solid rgba(171, 173, 175, 0.15);
-  border-radius: 9999px;
-  transition: border-radius 0.3s ease-in-out, background-color 0.3s ease-in-out;
-  cursor: pointer;
-}
-
-.sso-buttons button:hover {
-  background-color: #eef1f3;
-  border-radius: 1rem;
-}
-
-.sso-buttons img {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.sso-buttons span {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #595c5e;
+  .primary-button:not(:disabled):hover {
+    width: min(20.5rem, 96vw);
+  }
 }
 
 .signup-link {
