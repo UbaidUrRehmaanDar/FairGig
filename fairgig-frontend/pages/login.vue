@@ -128,6 +128,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { navigateTo } from 'nuxt/app'
+import { useAuthStore } from '../stores/auth'
 
 const email = ref('')
 const password = ref('')
@@ -135,12 +137,12 @@ const rememberDevice = ref(false)
 const isLoggingIn = ref(false)
 const showPassword = ref(false)
 
+const authStore = useAuthStore()
+
 const errors = ref<{ email: string; password: string }>({
   email: '',
   password: ''
 })
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
@@ -164,15 +166,23 @@ const validateForm = () => {
   return !errors.value.email && !errors.value.password
 }
 
+const resolveTargetByRole = (role: string) => {
+  if (role === 'advocate') return '/dashboard/advocate'
+  if (role === 'verifier') return '/dashboard/verifier'
+  return '/dashboard/worker'
+}
+
 const handleLogin = async () => {
   if (isLoggingIn.value) return
-
   if (!validateForm()) return
 
   isLoggingIn.value = true
   try {
-    await sleep(1200)
-    // TODO: integrate real auth API here
+    // Placeholder store; real auth will set user/role later.
+    await authStore.signIn()
+    await navigateTo(resolveTargetByRole(authStore.role))
+  } catch {
+    errors.value.password = 'Login failed. Please check your credentials and try again.'
   } finally {
     isLoggingIn.value = false
   }
