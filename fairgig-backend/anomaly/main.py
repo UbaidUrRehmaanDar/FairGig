@@ -18,7 +18,10 @@ def _parse_allowed_origins(raw: str, fallback: List[str]) -> List[str]:
     return parsed or fallback
 
 
-DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001"]
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://your-nuxt-app.vercel.app",
+]
 ALLOWED_ORIGINS = _parse_allowed_origins(
     os.getenv("ANOMALY_ALLOWED_ORIGINS", ""),
     DEFAULT_ALLOWED_ORIGINS,

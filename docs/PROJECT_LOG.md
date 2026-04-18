@@ -1,5 +1,29 @@
 # Project Log
 
+## 2026-04-18 - Phase 1 Backend Foundation Implementation
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified.
+- Implemented pooled PostgreSQL lifecycle in `fairgig-backend/core/db.py`:
+  - Added singleton asyncpg pool management via `get_pool()` and `close_pool()`.
+  - Enforced `DATABASE_URL` presence with explicit runtime error for misconfiguration.
+  - Kept compatibility wrappers (`connect_to_db`, `close_db_connection`) mapped to pooled lifecycle.
+- Cleaned duplicate startup patterns in `fairgig-backend/core/main.py`:
+  - Removed extra startup/shutdown DB hooks to avoid dual pool initialization paths.
+  - Kept lifespan-based initialization as the single DB lifecycle path.
+  - Updated default CORS allowlist to `http://localhost:3000` + production placeholder URL.
+- Hardened auth behavior in `fairgig-backend/core/auth_middleware.py`:
+  - Switched bearer auth to return 401 for missing credentials.
+  - Added explicit guard for missing `SUPABASE_JWT_SECRET`.
+  - Kept JWT validation with Supabase-compatible audience handling.
+  - Improved role extraction fallback across user/app metadata.
+- Implemented `POST /auth/setup-profile` persistence in `fairgig-backend/core/routers/auth.py`:
+  - Replaced skeleton response with DB upsert into `profiles`.
+  - Returns stable response shape: `{ id, role, status: "profile_saved" }`.
+  - Uses JWT-derived role as trusted source to prevent request-body role escalation.
+- Aligned anomaly service and backend env template defaults:
+  - Updated `fairgig-backend/anomaly/main.py` CORS defaults to localhost + production placeholder.
+  - Updated `fairgig-backend/.env.example` allowlist variables to same defaults.
+
 ## 2026-04-18 - Security Hardening Baseline
 - Name: Rehan Abrar
 - Added repository-level ignore policy in `.gitignore` to block env files, key/certificate files, and local secret directories from being committed.

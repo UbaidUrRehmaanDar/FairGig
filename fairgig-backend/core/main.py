@@ -24,7 +24,10 @@ def _is_truthy(value: str) -> bool:
     return (value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001"]
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://your-nuxt-app.vercel.app",
+]
 ALLOWED_ORIGINS = _parse_allowed_origins(
     os.getenv("CORE_ALLOWED_ORIGINS", ""),
     DEFAULT_ALLOWED_ORIGINS,
