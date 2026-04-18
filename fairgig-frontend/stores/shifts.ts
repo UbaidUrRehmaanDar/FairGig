@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { useApi } from '../composables/useApi'
 
@@ -24,10 +24,105 @@ type ShiftSummary = {
   total_shifts: number
 }
 
+type AnomalyFinding = {
+  date: string
+  platform: string
+  type: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  value: string | number | null
+  explanation: string
+}
+
+type AnomalySummary = {
+  shifts_analyzed: number
+  high_priority_flags: number
+  avg_commission_pct: number
+  total_net: number
+}
+
+type AnomalyReport = {
+  worker_id: string
+  scanned_at: string | null
+  service_status: string
+  service_message: string | null
+  summary: AnomalySummary
+  findings_count: number
+  findings: AnomalyFinding[]
+  public_api?: {
+    endpoint?: string
+    description?: string
+  }
+}
+
+type AnomalyReportView = {
+  summary: string
+  publicApiDescription: string
+  serviceWarning: string
+  scannedAt: string | null
+  items: AnomalyFinding[]
+  count: number
+}
+
+const emptyAnomalySummary = (): AnomalySummary => ({
+  shifts_analyzed: 0,
+  high_priority_flags: 0,
+  avg_commission_pct: 0,
+  total_net: 0,
+})
+
+const normalizeSeverity = (value: unknown): AnomalyFinding['severity'] => {
+  const safe = String(value || '').toLowerCase().trim()
+  if (safe === 'critical' || safe === 'high' || safe === 'low') {
+    return safe
+  }
+  return 'medium'
+}
+
+const normalizeFindings = (items: unknown): AnomalyFinding[] => {
+  if (!Array.isArray(items)) return []
+
+  return items.map((item: any) => ({
+    date: String(item?.date || ''),
+    platform: String(item?.platform || 'Unknown platform'),
+    type: String(item?.type || 'anomaly'),
+    severity: normalizeSeverity(item?.severity),
+    value:
+      item?.value === null || item?.value === undefined ? null : (item?.value as string | number),
+    explanation: String(item?.explanation || 'No explanation available.'),
+  }))
+}
+
+const normalizeAnomalyReport = (payload: any): AnomalyReport => {
+  const summaryRaw = payload?.summary || {}
+  const findings = normalizeFindings(payload?.findings)
+
+  return {
+    worker_id: String(payload?.worker_id || ''),
+    scanned_at: payload?.scanned_at ? String(payload.scanned_at) : null,
+    service_status: String(payload?.service_status || 'ok'),
+    service_message: payload?.service_message ? String(payload.service_message) : null,
+    summary: {
+      shifts_analyzed: Number(summaryRaw?.shifts_analyzed || 0),
+      high_priority_flags: Number(summaryRaw?.high_priority_flags || 0),
+      avg_commission_pct: Number(summaryRaw?.avg_commission_pct || 0),
+      total_net: Number(summaryRaw?.total_net || 0),
+    },
+    findings_count: Number(payload?.findings_count || findings.length || 0),
+    findings,
+    public_api:
+      payload?.public_api && typeof payload.public_api === 'object'
+        ? {
+            endpoint: payload.public_api?.endpoint ? String(payload.public_api.endpoint) : undefined,
+            description: payload.public_api?.description
+              ? String(payload.public_api.description)
+              : undefined,
+          }
+        : undefined,
+  }
+}
+
 export const useShiftsStore = defineStore('shifts', () => {
   const { authFetch } = useApi()
-  const config = useRuntimeConfig()
-  const supabase = useSupabaseClient()
 
   const shifts = ref<ShiftRecord[]>([])
   const shiftsError = ref('')
@@ -36,15 +131,39 @@ export const useShiftsStore = defineStore('shifts', () => {
   const summaryError = ref('')
   const cityMedian = ref<any>(null)
   const loading = ref(false)
-  const anomalies = ref<any[]>([])
+  const anomalies = ref<AnomalyFinding[]>([])
+  const anomalyReportData = ref<AnomalyReport | null>(null)
   const anomalyError = ref('')
   const anomalyScannedAt = ref<string | null>(null)
 
-  const getCurrentUserId = async () => {
-    const { data } = await supabase.auth.getSession()
-    const userId = data.session?.user?.id
-    return typeof userId === 'string' ? userId.trim() : ''
-  }
+  const anomalyReport = computed<AnomalyReportView>(() => {
+    const report = anomalyReportData.value
+    const serviceStatus = String(report?.service_status || '').trim()
+    const serviceMessage = String(report?.service_message || '').trim()
+    const count = report?.findings_count ?? anomalies.value.length
+
+    const summary = anomalyError.value
+      ? 'Anomaly scan unavailable.'
+      : serviceStatus && serviceStatus !== 'ok'
+        ? serviceMessage || 'Anomaly scan completed with warnings.'
+        : count === 0
+          ? 'No anomalies detected in recent shifts.'
+          : `${count} ${count === 1 ? 'anomaly' : 'anomalies'} detected in recent shifts.`
+
+    return {
+      summary,
+      publicApiDescription:
+        report?.public_api?.description || 'Anomaly service: /anomaly/detect',
+      serviceWarning: anomalyError.value
+        ? `Service warning: ${anomalyError.value}`
+        : serviceStatus && serviceStatus !== 'ok'
+          ? `Service warning: ${serviceMessage || serviceStatus}`
+          : '',
+      scannedAt: report?.scanned_at || anomalyScannedAt.value,
+      items: report?.findings || anomalies.value,
+      count,
+    }
+  })
 
   const fetchShifts = async () => {
     loading.value = true
@@ -77,7 +196,6 @@ export const useShiftsStore = defineStore('shifts', () => {
       }
       return summary.value
     } catch (error: any) {
-      // Prevent the UI from skeleton-loading forever.
       summary.value = {
         this_month: 0,
         this_week: 0,
@@ -104,63 +222,37 @@ export const useShiftsStore = defineStore('shifts', () => {
     return cityMedian.value
   }
 
-  const detectAnomalies = async (limit = 25) => {
+  const detectAnomalies = async (limit = 120) => {
     anomalyError.value = ''
-
-    const currentUserId = await getCurrentUserId()
-    const workerId = currentUserId || String(shifts.value?.[0]?.worker_id || '').trim()
-    const earnings = (shifts.value || [])
-      .slice(0, limit)
-      .map((shift) => ({
-        date: shift.shift_date,
-        platform: shift.platform,
-        gross_earned: Number(shift.gross_earned || 0),
-        platform_deductions: Number(shift.platform_deductions || 0),
-        net_received: Number(shift.net_received || 0),
-        hours_worked: shift.hours_worked == null ? null : Number(shift.hours_worked),
-      }))
-      .filter((item) => !!item.date)
-
-    if (!workerId || earnings.length < 2) {
-      anomalies.value = []
-      anomalyScannedAt.value = new Date().toISOString()
-      return anomalies.value
-    }
-
-    const anomalyBase = String(config.public.anomalyBase || 'http://localhost:8001').replace(
-      /\/$/,
-      ''
-    )
+    const safeLimit = Math.max(1, Math.min(240, Number(limit || 120)))
 
     try {
-      const response = await fetch(`${anomalyBase}/anomaly/detect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          worker_id: workerId,
-          earnings,
-        }),
-      })
+      const payload = await authFetch(`/shifts/anomaly-check?limit=${safeLimit}`)
+      const normalized = normalizeAnomalyReport(payload)
 
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        const detail =
-          payload && typeof payload === 'object' && 'detail' in payload
-            ? String((payload as any).detail)
-            : ''
-        throw new Error(detail || `Anomaly service failed (${response.status})`)
+      anomalyReportData.value = normalized
+      anomalies.value = normalized.findings
+      anomalyScannedAt.value = normalized.scanned_at || new Date().toISOString()
+
+      if (normalized.service_status !== 'ok' && normalized.service_message) {
+        anomalyError.value = normalized.service_message
       }
 
-      anomalies.value = Array.isArray(payload?.anomalies) ? payload.anomalies : []
-      anomalyScannedAt.value = new Date().toISOString()
-      return anomalies.value
+      return normalized
     } catch (error: any) {
+      anomalyReportData.value = {
+        worker_id: '',
+        scanned_at: new Date().toISOString(),
+        service_status: 'error',
+        service_message: error?.message || 'Anomaly scan failed.',
+        summary: emptyAnomalySummary(),
+        findings_count: 0,
+        findings: [],
+      }
       anomalies.value = []
       anomalyError.value = error?.message || 'Anomaly scan failed.'
       anomalyScannedAt.value = new Date().toISOString()
-      return anomalies.value
+      return anomalyReportData.value
     }
   }
 
@@ -187,6 +279,7 @@ export const useShiftsStore = defineStore('shifts', () => {
     cityMedian,
     loading,
     anomalies,
+    anomalyReport,
     anomalyError,
     anomalyScannedAt,
     fetchShifts,

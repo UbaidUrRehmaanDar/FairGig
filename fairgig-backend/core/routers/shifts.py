@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -14,6 +14,10 @@ from db import get_pool
 
 router = APIRouter()
 
+ANOMALY_TIMEOUT_SECONDS = 8.0
+ANOMALY_DEFAULT_LIMIT = 120
+ANOMALY_MAX_LIMIT = 240
+
 
 def _to_json(value: Any):
     if isinstance(value, Decimal):
@@ -25,6 +29,183 @@ def _to_json(value: Any):
 
 def _serialize_row(row: asyncpg.Record) -> dict:
     return {key: _to_json(row[key]) for key in row.keys()}
+
+
+def _to_float(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
+def _normalize_severity(value: Any) -> str:
+    normalized = str(value or 'medium').strip().lower()
+    if normalized in {'critical', 'high', 'medium', 'low'}:
+        return normalized
+    return 'medium'
+
+
+def _normalize_anomaly_entry(raw: Any) -> dict:
+    entry = raw if isinstance(raw, dict) else {}
+    value = entry.get('value')
+
+    if isinstance(value, Decimal):
+        normalized_value: Any = float(value)
+    elif value is None:
+        normalized_value = None
+    else:
+        normalized_value = value
+
+    return {
+        'date': str(entry.get('date') or ''),
+        'platform': str(entry.get('platform') or 'Unknown platform'),
+        'type': str(entry.get('type') or 'anomaly'),
+        'severity': _normalize_severity(entry.get('severity')),
+        'value': normalized_value,
+        'explanation': str(entry.get('explanation') or 'No explanation provided.'),
+    }
+
+
+def _to_earnings_payload_row(row: dict) -> dict:
+    return {
+        'date': str(row.get('shift_date') or ''),
+        'platform': str(row.get('platform') or 'Unknown platform'),
+        'gross_earned': _to_float(row.get('gross_earned')),
+        'platform_deductions': _to_float(row.get('platform_deductions')),
+        'net_received': _to_float(row.get('net_received')),
+        'hours_worked': None if row.get('hours_worked') is None else _to_float(row.get('hours_worked')),
+    }
+
+
+def _avg_commission_pct(rows: list[dict]) -> float:
+    ratios = []
+    for row in rows:
+        gross = _to_float(row.get('gross_earned'))
+        if gross <= 0:
+            continue
+        ratios.append((_to_float(row.get('platform_deductions')) / gross) * 100)
+
+    if not ratios:
+        return 0.0
+    return float(sum(ratios) / len(ratios))
+
+
+async def _call_anomaly_service(worker_id: str, earnings_payload: list[dict]):
+    anomaly_service_url = (os.getenv('ANOMALY_SERVICE_URL') or '').strip()
+    if not anomaly_service_url:
+        return [], 'unavailable', 'Anomaly service is not configured.'
+
+    endpoints = [
+        f"{anomaly_service_url.rstrip('/')}/anomaly/detect",
+        f"{anomaly_service_url.rstrip('/')}/detect",
+    ]
+
+    payload = None
+    last_status = 'unknown'
+
+    try:
+        async with httpx.AsyncClient(timeout=ANOMALY_TIMEOUT_SECONDS) as client:
+            for endpoint in endpoints:
+                try:
+                    response = await client.post(
+                        endpoint,
+                        json={'worker_id': worker_id, 'earnings': earnings_payload},
+                    )
+                    response.raise_for_status()
+                    payload = response.json() if response.content else {}
+                    break
+                except httpx.HTTPStatusError as exc:
+                    last_status = str(exc.response.status_code) if exc.response is not None else 'unknown'
+                    if exc.response is None or exc.response.status_code != 404:
+                        raise
+                except httpx.TimeoutException:
+                    raise
+    except httpx.TimeoutException:
+        return [], 'timeout', 'Anomaly service timed out.'
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code if exc.response is not None else last_status
+        return [], 'error', f'Anomaly service failed ({status}).'
+    except Exception:
+        return [], 'error', 'Anomaly service is currently unavailable.'
+
+    if payload is None:
+        return [], 'error', f'Anomaly service failed ({last_status}).'
+
+    findings_raw = payload.get('anomalies') if isinstance(payload, dict) else []
+    findings = [
+        _normalize_anomaly_entry(item)
+        for item in findings_raw
+        if isinstance(item, dict)
+    ]
+    return findings, 'ok', None
+
+
+async def _build_worker_anomaly_check(pool: asyncpg.Pool, worker_id: str, limit: int) -> dict:
+    rows = await pool.fetch(
+        """
+        SELECT
+            shift_date,
+            platform,
+            gross_earned,
+            platform_deductions,
+            net_received,
+            hours_worked,
+            created_at
+        FROM shifts
+        WHERE worker_id = $1
+        ORDER BY shift_date DESC, created_at DESC
+        LIMIT $2
+        """,
+        worker_id,
+        limit,
+    )
+
+    serialized_rows = [_serialize_row(row) for row in rows]
+    earnings_payload = [_to_earnings_payload_row(row) for row in reversed(serialized_rows)]
+
+    findings: list[dict] = []
+    service_status = 'ok'
+    service_message = None
+
+    if len(earnings_payload) >= 2:
+        findings, service_status, service_message = await _call_anomaly_service(
+            worker_id,
+            earnings_payload,
+        )
+    else:
+        service_status = 'insufficient_data'
+        service_message = 'At least two shifts are required for anomaly analysis.'
+
+    high_priority_flags = sum(
+        1
+        for item in findings
+        if str(item.get('severity') or '').lower() in {'high', 'critical'}
+    )
+    total_net = sum(_to_float(row.get('net_received')) for row in serialized_rows)
+
+    return {
+        'worker_id': worker_id,
+        'scanned_at': _utc_now_iso(),
+        'window_limit': limit,
+        'service_status': service_status,
+        'service_message': service_message,
+        'summary': {
+            'shifts_analyzed': len(serialized_rows),
+            'high_priority_flags': high_priority_flags,
+            'avg_commission_pct': round(_avg_commission_pct(serialized_rows), 1),
+            'total_net': round(total_net, 2),
+        },
+        'findings_count': len(findings),
+        'findings': findings,
+        'public_api': {
+            'endpoint': '/anomaly/detect',
+            'description': 'The detection logic runs at /anomaly/detect, with /detect as a fallback for older sidecars.',
+        },
+    }
 
 
 class ShiftIn(BaseModel):
@@ -225,3 +406,12 @@ async def city_median(platform: str, user=Depends(require_role("worker"))):
         "avg_commission_pct": float(result.get("avg_commission_pct") or 0),
         "sample_size": int(result.get("sample_size") or 0),
     }
+
+
+@router.get("/anomaly-check")
+async def anomaly_check(
+    limit: int = Query(ANOMALY_DEFAULT_LIMIT, ge=1, le=ANOMALY_MAX_LIMIT),
+    user=Depends(require_role("worker")),
+):
+    pool = await get_pool()
+    return await _build_worker_anomaly_check(pool, user["id"], limit)

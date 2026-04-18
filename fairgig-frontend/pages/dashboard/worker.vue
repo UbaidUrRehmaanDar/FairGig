@@ -3,7 +3,7 @@
     <main class="dashboard-main">
       <section class="dashboard-hero">
         <div class="hero-copy">
-          <p class="hero-eyebrow">Worker overview</p>
+          <p class="hero-eyebrow">Worker Dashboard</p>
           <h1>Salam, {{ displayName }}</h1>
           <p class="hero-subtext">{{ cityLabel }} · {{ workerTrackLabel }}</p>
         </div>
@@ -16,37 +16,30 @@
 
       <section class="summary-grid" v-if="!summaryLoading">
         <article class="summary-card">
-          <div class="card-label">Net (last 30 days)</div>
-          <div class="card-value">Rs {{ formatMoney(netLast30Days) }}</div>
-          <p :class="['card-helper', netTrendClass]">{{ netTrendText }}</p>
+          <div class="card-label">This Month</div>
+          <div class="card-value">Rs {{ formatMoney(summary?.this_month) }}</div>
+          <p class="card-helper">All earnings in the current month</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">Effective hourly</div>
+          <div class="card-label">This Week</div>
+          <div class="card-value">Rs {{ formatMoney(summary?.this_week) }}</div>
+          <p class="card-helper">Current week total</p>
+        </article>
+
+        <article class="summary-card">
+          <div class="card-label">Avg Hourly</div>
           <div class="card-value">
-            Rs {{ formatMoney(effectiveHourly) }}<span class="card-suffix">/hr</span>
+            Rs {{ formatMoney(summary?.avg_hourly) }}<span class="card-suffix">/hr</span>
           </div>
 
-          <p class="card-helper" v-if="hourlyDeltaPct !== null">
-            City median
-            <span :class="hourlyDeltaClass">{{ formatSignedPercent(hourlyDeltaPct) }}</span>
-            (Rs {{ formatMoney(cityMedian?.median_hourly) }}/hr)
-          </p>
-          <p class="card-helper" v-else>City median unavailable</p>
+          <p class="card-helper">Using logged shift hours</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">Avg commission</div>
-          <div class="card-value">{{ formatPercent(avgCommissionLast30) }}%</div>
-          <p class="card-helper">Across all platforms</p>
-        </article>
-
-        <article class="summary-card">
-          <div class="card-label">Verified shifts</div>
-          <div class="card-value">
-            {{ verifiedShiftCount }}<span class="card-suffix">/{{ shiftsInLast30Days.length }}</span>
-          </div>
-          <p class="card-helper"><span class="icon icon-inline">shield</span> earnings</p>
+          <div class="card-label">Platform Takes</div>
+          <div class="card-value">{{ formatPercent(summary?.avg_commission_pct) }}%</div>
+          <p class="card-helper">Average deductions from gross pay</p>
         </article>
       </section>
 
@@ -171,19 +164,23 @@
 
       <section class="anomaly-card">
         <div class="comparison-header">
-          <h2>Anomaly Watch</h2>
+          <h2>Anomaly Analysis</h2>
           <button class="ghost-btn" type="button" :disabled="anomalyLoading" @click="runAnomalyScan">
             {{ anomalyLoading ? 'Scanning...' : 'Rescan' }}
           </button>
         </div>
 
-        <p v-if="anomalyLoading" class="comparison-empty">Checking your recent shifts for unusual patterns...</p>
-        <p v-else-if="anomalyError" class="comparison-empty">{{ anomalyError }}</p>
-        <p v-else-if="!anomalies.length" class="comparison-empty">
-          No anomalies detected in recent shifts.
-        </p>
+        <div class="anomaly-summary">
+          <p class="anomaly-summary-line">
+            {{ anomalyLoading ? 'Checking your recent shifts for unusual patterns...' : anomalyReport.summary }}
+          </p>
+          <p class="anomaly-summary-line">{{ anomalyReport.publicApiDescription }}</p>
+          <p v-if="anomalyReport.serviceWarning" class="anomaly-warning">
+            {{ anomalyReport.serviceWarning }}
+          </p>
+        </div>
 
-        <div v-else class="anomaly-list">
+        <div v-if="anomalies.length" class="anomaly-list">
           <article
             v-for="(item, idx) in anomalies.slice(0, 5)"
             :key="`${item.date || 'unknown'}-${item.type || 'type'}-${idx}`"
@@ -204,6 +201,8 @@
             <p class="anomaly-explanation">{{ item.explanation || 'No explanation available.' }}</p>
           </article>
         </div>
+
+        <p v-else class="comparison-empty">No anomaly entries to show right now.</p>
 
         <p v-if="anomalyScannedAt" class="comparison-empty">
           Last scan: {{ formatScanTime(anomalyScannedAt) }}
@@ -351,6 +350,7 @@ const {
   anomalies,
   anomalyError,
   anomalyScannedAt,
+  anomalyReport,
 } = storeToRefs(shiftsStore)
 
 const anomalyLoading = ref(false)
@@ -1215,6 +1215,25 @@ onMounted(async () => {
 .comparison-empty {
   margin-top: 0.7rem;
   color: var(--fg-muted);
+}
+
+.anomaly-summary {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.anomaly-summary-line {
+  color: var(--fg-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.anomaly-warning {
+  margin-top: 0.1rem;
+  color: #b54708;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .anomaly-list {
