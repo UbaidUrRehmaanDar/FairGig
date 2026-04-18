@@ -100,6 +100,8 @@
             <label for="remember-device">Remember device</label>
           </div>
 
+          <p v-if="authMessage" :class="['auth-message', authMessageType]">{{ authMessage }}</p>
+
           <div class="actions">
             <button
               type="submit"
@@ -128,20 +130,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import type { User } from '@supabase/supabase-js'
+import { navigateTo } from 'nuxt/app'
+import { useSupabaseClient } from '#imports'
+
+const supabase = useSupabaseClient()
 
 const email = ref('')
 const password = ref('')
 const rememberDevice = ref(false)
 const isLoggingIn = ref(false)
 const showPassword = ref(false)
+const authMessage = ref('')
+const authMessageType = ref<'error' | 'success'>('error')
 
 const errors = ref<{ email: string; password: string }>({
   email: '',
   password: ''
 })
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+const roleToRoute: Record<string, string> = {
+  worker: '/dashboard/worker',
+  verifier: '/dashboard/verifier',
+  advocate: '/dashboard/advocate'
+}
+
+const resolveRole = (user: User | null) => {
+  const roleCandidate =
+    (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
+    (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
+    'worker'
+
+  return roleCandidate.toLowerCase().trim()
+}
+
+const routeForRole = (role: string) => roleToRoute[role] || roleToRoute.worker
 
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
@@ -170,14 +194,47 @@ const handleLogin = async () => {
 
   if (!validateForm()) return
 
+  authMessage.value = ''
   isLoggingIn.value = true
+
   try {
-    await sleep(1200)
-    // TODO: integrate real auth API here
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.value,
+      password: password.value
+    })
+
+    if (error) {
+      authMessageType.value = 'error'
+      authMessage.value = error.message || 'Invalid credentials. Please try again.'
+      return
+    }
+
+    if (!data.user) {
+      authMessageType.value = 'error'
+      authMessage.value = 'No user was returned from Supabase. Please try again.'
+      return
+    }
+
+    if (!rememberDevice.value) {
+      authMessageType.value = 'success'
+      authMessage.value = 'Signed in. Session will still persist in this browser.'
+    }
+
+    await navigateTo(routeForRole(resolveRole(data.user)))
+  } catch (error: any) {
+    authMessageType.value = 'error'
+    authMessage.value = error?.message || 'Login failed. Please try again.'
   } finally {
     isLoggingIn.value = false
   }
 }
+
+onMounted(async () => {
+  const { data } = await supabase.auth.getSession()
+  if (data.session?.user) {
+    await navigateTo(routeForRole(resolveRole(data.session.user)))
+  }
+})
 </script>
 
 <style scoped>
@@ -437,6 +494,24 @@ const handleLogin = async () => {
   font-weight: 600;
   color: #d92d20;
   line-height: 1.2;
+}
+
+.auth-message {
+  margin: 0.25rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.auth-message.error {
+  color: #8a1f1f;
+  background: #ffe9e9;
+}
+
+.auth-message.success {
+  color: #1d6f42;
+  background: #e7f8ef;
 }
 
 .icon-button {

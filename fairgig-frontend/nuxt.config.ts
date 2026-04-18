@@ -1,5 +1,8 @@
 import { defineNuxtConfig } from "nuxt/config"
 
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
+
 export default defineNuxtConfig({
   app: {
     head: {
@@ -17,8 +20,8 @@ export default defineNuxtConfig({
   },
   modules: ["@pinia/nuxt", "@nuxtjs/supabase"],
   supabase: {
-    url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_KEY,
+    url: supabaseUrl,
+    key: supabaseKey,
     redirectOptions: {
       login: "/login",
       callback: "/confirm",

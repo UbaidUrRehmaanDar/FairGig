@@ -57,3 +57,35 @@
   - Nuxt config, env example, API composable, Pinia stores, layouts, and route pages.
 - Added starter placeholder logic in pages/routers so feature implementation can be layered in incrementally.
 - Simplified frontend placeholders to avoid unresolved editor symbols before Nuxt dependencies are installed.
+
+## 2026-04-18 - Phase 2 Shifts & Screenshots Implementation
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified for this task.
+- Implemented Phase 2 API endpoints in `fairgig-backend/core/routers/shifts.py`:
+  - `POST /shifts` now inserts a shift row in PostgreSQL and returns persisted `shift_id`.
+  - `GET /shifts` now returns the authenticated worker's shifts ordered by date.
+  - `GET /shifts/summary` now computes `this_month`, `this_week`, `avg_hourly`, `avg_commission_pct`, and `total_shifts`.
+  - `GET /shifts/city-median?platform=` now reads from `city_medians` using the worker profile's `city_zone` and `platform_category`.
+  - Added non-blocking anomaly sidecar callback support after shift creation when `ANOMALY_SERVICE_URL` is configured.
+- Implemented Phase 2 screenshot workflow in `fairgig-backend/core/routers/screenshots.py`:
+  - `POST /screenshots/upload/{shift_id}` now validates shift ownership, uploads to Supabase Storage bucket `earnings`, records `earnings_screenshots`, and sets parent shift status to `pending`.
+  - `GET /screenshots/pending` now returns pending review queue with joined shift/profile context.
+  - `PATCH /screenshots/{id}/review` now validates review status, updates reviewer fields/timestamp, and syncs parent shift verification status.
+- Updated Phase tracker in `fairgig-backend/docs/phases.md` by marking all Phase 2 checklist items complete.
+
+## 2026-04-18 - Phase 2 E2E Validation + Error Handling Hardening
+- Name: Mustafa
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified for this task.
+- Hardened profile/shift write-path errors to avoid opaque 500s:
+  - Updated `fairgig-backend/core/routers/auth.py` to catch `asyncpg.ForeignKeyViolationError` during `POST /auth/setup-profile` and return a clear 400 message when JWT `sub` is not present in Supabase `auth.users`.
+  - Updated `fairgig-backend/core/routers/shifts.py` to catch `asyncpg.ForeignKeyViolationError` during `POST /shifts` and return a clear 400 message when worker profile is missing.
+- Executed full real-user Phase 2 end-to-end test (not synthetic JWT-only IDs):
+  - Created worker + verifier users in Supabase Auth via Admin API.
+  - Ran `POST /auth/setup-profile` successfully for both roles.
+  - Ran `POST /shifts` and confirmed created shift appears in `GET /shifts`.
+  - Validated `GET /shifts/summary` returned totals and `GET /shifts/city-median` returned a valid response payload.
+  - Uploaded proof via `POST /screenshots/upload/{shift_id}`.
+  - Confirmed item appears in verifier queue via `GET /screenshots/pending`.
+  - Reviewed item via `PATCH /screenshots/{id}/review` with status `verified`.
+  - Verified parent shift `verification_status` changed to `verified`.
+- Phase 2 gate is now verified end-to-end on the running local core API with live Supabase integration.

@@ -1,8 +1,44 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+import os
+from datetime import datetime
+from typing import Literal, Optional
+from uuid import uuid4
 
-from auth_middleware import get_current_user, require_role
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
+from supabase import Client, create_client
+
+from auth_middleware import require_role
+from db import get_pool
 
 router = APIRouter()
+
+ALLOWED_REVIEW_STATUS = {"verified", "flagged", "unverifiable"}
+SHIFT_STATUS_BY_SCREENSHOT_STATUS = {
+    "verified": "verified",
+    "flagged": "disputed",
+    "unverifiable": "unverified",
+}
+
+_supabase_client: Optional[Client] = None
+
+
+class ScreenshotReviewIn(BaseModel):
+    status: Literal["verified", "flagged", "unverifiable"]
+    note: str = ""
+
+
+def get_supabase_client() -> Client:
+    global _supabase_client
+    if _supabase_client is None:
+        supabase_url = (os.getenv("SUPABASE_URL") or "").strip()
+        service_key = (os.getenv("SUPABASE_SERVICE_KEY") or "").strip()
+        if not supabase_url or not service_key:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase storage is not configured",
+            )
+        _supabase_client = create_client(supabase_url, service_key)
+    return _supabase_client
 
 
 @router.post("/upload/{shift_id}")
@@ -14,9 +50,58 @@ async def upload_screenshot(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File is required")
 
+    pool = await get_pool()
+    shift = await pool.fetchrow(
+        "SELECT id FROM shifts WHERE id = $1 AND worker_id = $2",
+        shift_id,
+        user["id"],
+    )
+    if shift is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Shift not found for this worker",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    extension = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+    storage_path = f"screenshots/{user['id']}/{shift_id}/{uuid4()}.{extension}"
+
+    storage = get_supabase_client().storage.from_("earnings")
+    try:
+        storage.upload(
+            storage_path,
+            content,
+            {"content-type": file.content_type or "application/octet-stream"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Failed to upload to storage") from exc
+
+    screenshot = await pool.fetchrow(
+        """
+        INSERT INTO earnings_screenshots (shift_id, worker_id, storage_path, status)
+        VALUES ($1, $2, $3, 'pending')
+        RETURNING id, status, created_at
+        """,
+        shift_id,
+        user["id"],
+        storage_path,
+    )
+
+    await pool.execute(
+        "UPDATE shifts SET verification_status = 'pending' WHERE id = $1",
+        shift_id,
+    )
+
     return {
         "status": "uploaded",
+        "screenshot_id": str(screenshot["id"]),
         "shift_id": shift_id,
+        "storage_path": storage_path,
+        "review_status": screenshot["status"],
+        "created_at": screenshot["created_at"],
         "filename": file.filename,
         "worker_id": user["id"],
     }
@@ -24,23 +109,81 @@ async def upload_screenshot(
 
 @router.get("/pending")
 async def pending_screenshots(user=Depends(require_role("verifier", "advocate"))):
-    return []
+    pool = await get_pool()
+
+    rows = await pool.fetch(
+        """
+        SELECT
+            es.id,
+            es.shift_id,
+            es.worker_id,
+            es.storage_path,
+            es.status,
+            es.created_at,
+            s.platform,
+            s.shift_date,
+            s.net_received,
+            p.full_name,
+            p.city_zone
+        FROM earnings_screenshots es
+        JOIN shifts s ON s.id = es.shift_id
+        LEFT JOIN profiles p ON p.id = es.worker_id
+        WHERE es.status = 'pending'
+        ORDER BY es.created_at ASC
+        LIMIT 100
+        """
+    )
+
+    return [dict(row) for row in rows]
 
 
 @router.patch("/{screenshot_id}/review")
 async def review_screenshot(
     screenshot_id: str,
-    status: str,
-    note: str = "",
+    review: ScreenshotReviewIn,
     user=Depends(require_role("verifier", "advocate")),
 ):
-    if status not in ("verified", "flagged", "unverifiable"):
+    if review.status not in ALLOWED_REVIEW_STATUS:
         raise HTTPException(status_code=400, detail="Invalid status")
+
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT id, shift_id FROM earnings_screenshots WHERE id = $1",
+        screenshot_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Screenshot not found")
+
+    reviewed_at = datetime.utcnow()
+    await pool.execute(
+        """
+        UPDATE earnings_screenshots
+        SET
+            status = $1,
+            verifier_note = $2,
+            verifier_id = $3,
+            reviewed_at = $4
+        WHERE id = $5
+        """,
+        review.status,
+        review.note,
+        user["id"],
+        reviewed_at,
+        screenshot_id,
+    )
+
+    await pool.execute(
+        "UPDATE shifts SET verification_status = $1 WHERE id = $2",
+        SHIFT_STATUS_BY_SCREENSHOT_STATUS[review.status],
+        row["shift_id"],
+    )
 
     return {
         "status": "updated",
         "screenshot_id": screenshot_id,
-        "review_status": status,
-        "note": note,
+        "shift_id": str(row["shift_id"]),
+        "review_status": review.status,
+        "note": review.note,
         "reviewed_by": user["id"],
+        "reviewed_at": reviewed_at,
     }
