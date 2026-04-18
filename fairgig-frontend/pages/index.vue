@@ -1,40 +1,59 @@
 <template>
-  <div class="auth-bridge-container">
-    <section class="left-section">
-      <div class="content">
+  <div class="auth-index">
+    <!-- Left Brand Panel -->
+    <section class="left-panel">
+      <div class="left-content">
         <div class="logo">FairGig</div>
-        <div class="main-text">
-          <h1>Preparing your FairGig workspace.</h1>
+        <div class="hero-copy">
+          <h1>Welcome back to FairGig.</h1>
           <p>
-            We’re checking your session and routing you to the right dashboard with secure access.
+            Empowering the future of independent work with fair pay, better benefits, and total
+            transparency.
           </p>
         </div>
       </div>
     </section>
 
-    <main class="right-section">
-      <div class="card">
+    <!-- Right Session Panel -->
+    <main class="right-panel">
+      <div class="form-shell">
         <div class="mobile-logo">FairGig</div>
-        <h2>Just a moment...</h2>
-        <p v-if="message">{{ message }}</p>
 
-        <div class="loader-wrap" aria-live="polite">
-          <div class="loader"></div>
+        <div class="header">
+          <h2>{{ title }}</h2>
+          <p>{{ subtitle }}</p>
         </div>
 
-        <button class="primary-button" :disabled="isRedirecting">
-          <span>{{ isRedirecting ? 'Redirecting...' : 'Continue' }}</span>
-        </button>
+        <div class="status-chip" aria-live="polite">
+          <span class="icon" :class="{ spin: state === 'checking' }">{{ statusIcon }}</span>
+          <span>{{ statusText }}</span>
+        </div>
 
-        <div class="manual-links">
-          <NuxtLink to="/login">Go to Login</NuxtLink>
-          <NuxtLink to="/register">Create Account</NuxtLink>
+        <div class="actions">
+          <button
+            type="button"
+            class="primary-button"
+            :class="{ 'is-loading': state === 'checking' }"
+            :disabled="state === 'checking'"
+            @click="primaryAction"
+          >
+            <span>{{ primaryLabel }}</span>
+          </button>
+        </div>
+
+        <div class="link-row" v-if="state !== 'checking'">
+          <p v-if="state === 'guest'">
+            New to the platform? <NuxtLink to="/register">Join the community</NuxtLink>
+          </p>
+          <p v-else>
+            Try again from <NuxtLink to="/login">login</NuxtLink>
+          </p>
         </div>
       </div>
     </main>
 
     <div class="support-fab">
-      <button>
+      <button type="button" aria-label="Support">
         <span class="icon">help_outline</span>
       </button>
     </div>
@@ -42,65 +61,103 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+definePageMeta({ layout: false })
+
+import { computed, onMounted, ref } from 'vue'
 import { navigateTo } from 'nuxt/app'
-import { useAuthStore } from '../stores/auth'
+import { useSupabaseClient } from '#imports'
 
-const authStore = useAuthStore()
-const isRedirecting = ref(true)
-const message = ref('Validating your account session...')
+type ViewState = 'checking' | 'guest' | 'error'
+const state = ref<ViewState>('checking')
 
-const resolveTargetByRole = (role: string) => {
+const supabase = useSupabaseClient()
+
+const routeByRole = (role?: string) => {
   if (role === 'advocate') return '/dashboard/advocate'
   if (role === 'verifier') return '/dashboard/verifier'
   return '/dashboard/worker'
 }
 
+const title = computed(() => {
+  if (state.value === 'checking') return 'Preparing your workspace'
+  if (state.value === 'guest') return 'Welcome to FairGig'
+  return 'Something went wrong'
+})
+
+const subtitle = computed(() => {
+  if (state.value === 'checking') return 'Checking your account session and role.'
+  if (state.value === 'guest') return 'Please log in to continue to your dashboard.'
+  return 'We could not verify your session automatically.'
+})
+
+const statusIcon = computed(() => {
+  if (state.value === 'checking') return 'progress_activity'
+  if (state.value === 'guest') return 'info'
+  return 'error'
+})
+
+const statusText = computed(() => {
+  if (state.value === 'checking') return 'Redirect in progress...'
+  if (state.value === 'guest') return 'No active session found.'
+  return 'Auto-redirect failed.'
+})
+
+const primaryLabel = computed(() => {
+  if (state.value === 'checking') return 'Redirecting...'
+  return 'Go to Login'
+})
+
+const primaryAction = async () => {
+  if (state.value === 'checking') return
+  await navigateTo('/login')
+}
+
 onMounted(async () => {
   try {
-    const user = authStore.user
-    if (!user) {
-      message.value = 'No active session found. Please log in to continue.'
-      isRedirecting.value = false
+    const { data, error } = await supabase.auth.getSession()
+    if (error) {
+      state.value = 'error'
       return
     }
 
-    const role = authStore.role
-    message.value = `Signed in successfully. Redirecting to your ${role} dashboard...`
-    await navigateTo(resolveTargetByRole(role))
+    const user = data.session?.user
+    if (!user) {
+      state.value = 'guest'
+      return
+    }
+
+    const role = String(user.user_metadata?.role || 'worker')
+    await navigateTo(routeByRole(role))
   } catch {
-    message.value = 'We could not complete auto-redirect. Please continue manually.'
-    isRedirecting.value = false
+    state.value = 'error'
   }
 })
 </script>
 
 <style scoped>
-.auth-bridge-container {
+.auth-index {
   display: flex;
   min-height: 100vh;
-  overflow: hidden;
-  background-color: #f5f7f9;
+  background: #f5f7f9;
   color: #2c2f31;
   font-family: 'Raleway', sans-serif;
+  overflow: hidden;
 }
 
-.left-section {
+/* Left */
+.left-panel {
   display: none;
   width: 50%;
   position: relative;
-  flex-direction: column;
-  justify-content: space-between;
   padding: 3rem;
   color: #f2f1ff;
-  overflow: hidden;
   background:
     linear-gradient(rgba(5, 69, 239, 0.62), rgba(5, 69, 239, 0.62)),
     url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80')
       center / cover no-repeat;
 }
 
-.left-section::before {
+.left-panel::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -111,87 +168,88 @@ onMounted(async () => {
   mix-blend-mode: soft-light;
 }
 
-.left-section .content {
+.left-content {
   position: relative;
-  z-index: 10;
+  z-index: 2;
 }
 
-.left-section .logo {
+.logo {
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
 }
 
-.left-section .main-text {
+.hero-copy {
   margin-top: 10rem;
-}
-
-.left-section h1 {
-  font-size: 3.5rem;
-  font-weight: 800;
-  line-height: 1.1;
   max-width: 36rem;
 }
 
-.left-section p {
+.hero-copy h1 {
+  font-size: 3.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.hero-copy p {
   margin-top: 2rem;
   font-size: 1.125rem;
-  max-width: 32rem;
   line-height: 1.75;
-  opacity: 0.86;
+  opacity: 0.82;
 }
 
-.right-section {
+/* Right */
+.right-panel {
   width: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   padding: 2rem;
 }
 
-.card {
+.form-shell {
   width: 100%;
   max-width: 28rem;
-  background: #ffffff;
-  border-radius: 1.25rem;
-  padding: 2rem;
-  box-shadow: 0 20px 40px -24px rgba(44, 47, 49, 0.2);
-  text-align: center;
 }
 
 .mobile-logo {
   display: flex;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
   font-size: 1.5rem;
   font-weight: 800;
-  color: #0545ef;
   letter-spacing: -0.05em;
+  color: #0545ef;
 }
 
-.card h2 {
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header h2 {
   font-size: 1.875rem;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
-.card p {
+.header p {
   margin-top: 0.5rem;
   color: #595c5e;
 }
 
-.loader-wrap {
-  margin: 1.5rem 0;
+.status-chip {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: #eef1f3;
+  color: #595c5e;
+  font-weight: 600;
 }
-.loader {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  border: 3px solid #d9dde0;
-  border-top-color: #0545ef;
-  animation: spin 0.9s linear infinite;
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 @keyframes spin {
   to {
@@ -199,79 +257,97 @@ onMounted(async () => {
   }
 }
 
+.actions {
+  padding-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
 .primary-button {
   width: 18rem;
   height: 3.2rem;
-  margin: 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #595c5e;
-  color: #f2f1ff;
   border: none;
   border-radius: 9999px;
+  background: #0545ef;
+  color: #f2f1ff;
   font-weight: 700;
   font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
+}
+
+.primary-button.is-loading,
+.primary-button:disabled {
   cursor: not-allowed;
+  background: #595c5e;
   box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
 }
 
-.manual-links {
-  margin-top: 1.5rem;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
+.link-row {
+  margin-top: 2rem;
+  text-align: center;
 }
-.manual-links a {
+
+.link-row p {
+  color: #595c5e;
+  font-size: 0.875rem;
+}
+
+.link-row a {
   color: #0545ef;
   font-weight: 700;
   text-decoration: none;
+  margin-left: 0.25rem;
 }
-.manual-links a:hover {
+.link-row a:hover {
   text-decoration: underline;
 }
 
 .support-fab {
   position: fixed;
-  bottom: 2rem;
   right: 2rem;
-  z-index: 50;
+  bottom: 2rem;
+  z-index: 30;
 }
+
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  background-color: #ffffff;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  border: none;
   border-radius: 9999px;
+  background: #fff;
+  color: #0545ef;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0545ef;
-  border: none;
+  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
   cursor: pointer;
-  transition: all 0.3s;
 }
-.support-fab button:hover {
-  background-color: #0545ef;
-  color: #f2f1ff;
-}
-.support-fab .icon {
-  font-size: 1.5rem;
-  transition: transform 0.3s;
-}
-.support-fab button:hover .icon {
-  transform: scale(1.1);
+
+/* Responsive */
+@media (max-width: 480px) {
+  .primary-button,
+  .primary-button.is-loading,
+  .primary-button:disabled {
+    width: min(18rem, 92vw);
+  }
 }
 
 @media (min-width: 1024px) {
-  .left-section {
-    display: flex;
+  .left-panel {
+    display: block;
   }
-  .right-section {
+
+  .right-panel {
     width: 50%;
   }
+
   .mobile-logo {
     display: none;
+  }
+
+  .header {
+    text-align: left;
   }
 }
 
