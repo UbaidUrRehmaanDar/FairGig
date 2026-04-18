@@ -42,6 +42,15 @@
       <div class="form-container">
         <div class="mobile-logo">FairGig</div>
 
+        <button
+          type="button"
+          class="theme-toggle"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          <span class="icon">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
+        </button>
+
         <div class="form-header">
           <h2>Create your account</h2>
           <p>Set up your profile to get started.</p>
@@ -193,6 +202,7 @@ const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const statusMessage = ref('')
 const statusType = ref<'error' | 'success'>('error')
+const isDark = ref(false)
 
 const errors = ref<{
   fullName: string
@@ -214,6 +224,17 @@ const toggleShowPassword = () => {
 
 const toggleShowConfirmPassword = () => {
   showConfirmPassword.value = !showConfirmPassword.value
+}
+
+const applyTheme = (mode: 'light' | 'dark') => {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('dark', mode === 'dark')
+  localStorage.setItem('fg_theme', mode)
+  isDark.value = mode === 'dark'
+}
+
+const toggleTheme = () => {
+  applyTheme(isDark.value ? 'light' : 'dark')
 }
 
 const validateForm = () => {
@@ -357,6 +378,13 @@ const handleRegister = async () => {
 }
 
 onMounted(async () => {
+  const savedTheme = localStorage.getItem('fg_theme')
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    applyTheme(savedTheme)
+  } else {
+    isDark.value = document.documentElement.classList.contains('dark')
+  }
+
   const { data } = await supabase.auth.getSession()
   if (data.session?.user) {
     await navigateTo('/dashboard/worker')
@@ -502,6 +530,37 @@ onMounted(async () => {
 .form-container {
   width: 100%;
   max-width: 28rem;
+  position: relative;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 9999px;
+  border: 1px solid var(--fg-border);
+  background: var(--fg-surface);
+  color: var(--fg-text);
+  box-shadow: var(--fg-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms linear, transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.theme-toggle:hover {
+  background: var(--fg-surface-muted);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--fg-primary) 20%, transparent),
+    var(--fg-shadow);
 }
 
 .mobile-logo {

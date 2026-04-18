@@ -215,7 +215,7 @@ const {
   loading,
   anomalies,
   anomalyError,
-  anomalyScannedAt,
+  anomalyScannedAt
 } = storeToRefs(shiftsStore)
 const anomalyLoading = ref(false)
 
@@ -269,7 +269,7 @@ const formatScanTime = (value: string | null | undefined) => {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   })
 }
 
@@ -284,7 +284,6 @@ const runAnomalyScan = async () => {
 }
 
 onMounted(async () => {
-  // Avoid an infinite skeleton state if any API call fails.
   await Promise.allSettled([shiftsStore.fetchShifts(), shiftsStore.fetchSummary()])
 
   if (latestPlatform.value) {
@@ -329,14 +328,50 @@ onMounted(async () => {
   color: var(--fg-muted);
 }
 
+/* Primary CTA with your bounce morphology */
 .header-action {
-  background: var(--fg-primary);
+  width: 18rem;
+  height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: var(--fg-primary);
   color: #f2f1ff;
   text-decoration: none;
-  padding: 0.7rem 1rem;
+  border: 1px solid transparent;
   border-radius: 9999px;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  cursor: pointer;
+
+  transition:
+    border-radius 0ms linear,
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease;
+
+  box-shadow: var(--fg-shadow);
+}
+
+.header-action:hover {
+  border-radius: 1rem;
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  box-shadow: var(--fg-shadow);
+}
+
+.header-action:active {
+  filter: none;
+}
+
+.header-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .summary-grid {
@@ -410,9 +445,10 @@ onMounted(async () => {
   font-weight: 800;
 }
 
+/* Secondary button polish + hover */
 .ghost-btn,
 .table-link {
-  border: none;
+  border: 1px solid var(--fg-border);
   background: var(--fg-surface-muted);
   color: var(--fg-text);
   border-radius: 9999px;
@@ -420,6 +456,66 @@ onMounted(async () => {
   font-size: 0.8rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease,
+    border-color 140ms ease;
+}
+
+.ghost-btn:hover:not(:disabled),
+.table-link:hover {
+  background: color-mix(in srgb, var(--fg-primary) 12%, var(--fg-surface));
+  border-color: color-mix(in srgb, var(--fg-primary) 35%, var(--fg-border));
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px -12px color-mix(in srgb, var(--fg-primary) 45%, transparent);
+}
+
+/* City Comparison refresh: button itself turns blue on hover */
+.comparison-card .ghost-btn:hover:not(:disabled) {
+  background: var(--fg-primary);
+  border-color: var(--fg-primary);
+  color: #f2f1ff;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px -16px color-mix(in srgb, var(--fg-primary) 60%, transparent);
+}
+
+/* Anomaly Watch rescan: button itself turns blue on hover */
+.anomaly-card .ghost-btn:hover:not(:disabled) {
+  background: var(--fg-primary);
+  border-color: var(--fg-primary);
+  color: #f2f1ff;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px -16px color-mix(in srgb, var(--fg-primary) 60%, transparent);
+}
+
+/* Recent Shifts: View all button itself turns blue on hover */
+.table-card .table-link:hover {
+  background: var(--fg-primary);
+  border-color: var(--fg-primary);
+  color: #f2f1ff;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px -16px color-mix(in srgb, var(--fg-primary) 60%, transparent);
+}
+
+.ghost-btn:active:not(:disabled),
+.table-link:active {
+  transform: translateY(0);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.ghost-btn:focus-visible,
+.table-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
 
 .comparison-content p {
@@ -580,6 +676,7 @@ th {
   gap: 0.8rem;
 }
 
+/* Clickable cards with hover lift/glow */
 .quick-link-card {
   display: flex;
   gap: 0.75rem;
@@ -591,10 +688,16 @@ th {
   padding: 1rem;
   color: var(--fg-text);
   box-shadow: var(--fg-shadow);
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 170ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
 .quick-link-card .icon {
   color: var(--fg-primary);
+  transition: transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .quick-link-card h3 {
   font-size: 1rem;
@@ -604,6 +707,32 @@ th {
   margin-top: 0.25rem;
   color: var(--fg-muted);
   font-size: 0.85rem;
+}
+
+.quick-link-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, #fff 35%, var(--fg-primary));
+  background: var(--fg-primary);
+  color: #f2f1ff;
+  box-shadow: 0 16px 28px -18px color-mix(in srgb, var(--fg-primary) 55%, transparent);
+}
+
+.quick-link-card:hover .icon {
+  color: #f2f1ff;
+  transform: scale(1.08);
+}
+
+.quick-link-card:hover p {
+  color: color-mix(in srgb, #fff 78%, transparent);
+}
+
+.quick-link-card:active {
+  transform: translateY(-1px);
+}
+
+.quick-link-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
 
 .support-fab {
@@ -624,6 +753,34 @@ th {
   color: var(--fg-primary);
   border: 1px solid var(--fg-border);
   cursor: pointer;
+  transition: all 0.3s;
+}
+
+.support-fab button:hover {
+  background-color: var(--fg-primary);
+  color: #f2f1ff;
+}
+
+.support-fab .icon {
+  font-size: 1.5rem;
+  transition: transform 0.3s;
+}
+
+.support-fab button:hover .icon {
+  transform: scale(1.1);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .header-action,
+  .ghost-btn,
+  .table-link,
+  .quick-link-card,
+  .quick-link-card .icon,
+  .support-fab button,
+  .support-fab .icon {
+    transition: none !important;
+  }
 }
 
 /* Responsive */
@@ -642,6 +799,12 @@ th {
   }
   .quick-links {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .header-action {
+    width: min(18rem, 92vw);
   }
 }
 

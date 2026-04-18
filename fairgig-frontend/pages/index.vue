@@ -264,9 +264,16 @@ onMounted(async () => {
   justify-content: center;
 }
 
+/* ✅ Primary button microinteraction synced with login/register */
 .primary-button {
   width: 18rem;
   height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   border: none;
   border-radius: 9999px;
   background: var(--fg-primary);
@@ -274,12 +281,40 @@ onMounted(async () => {
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
+
+  transition:
+    width 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms linear,
+    box-shadow 140ms ease;
+
   box-shadow: var(--fg-shadow);
+}
+
+.primary-button:not(:disabled):hover {
+  width: 20.5rem;
+  height: 2.9rem;
+  border-radius: 1rem;
+  filter: brightness(0.95);
+  box-shadow: var(--fg-shadow);
+}
+
+.primary-button:not(:disabled):active {
+  filter: brightness(0.9);
+}
+
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
+  width: 18rem;
+  height: 3.2rem;
+  border-radius: 9999px;
   background: var(--fg-muted);
   box-shadow: var(--fg-shadow);
 }
@@ -331,6 +366,16 @@ onMounted(async () => {
   .primary-button.is-loading,
   .primary-button:disabled {
     width: min(18rem, 92vw);
+  }
+
+  .primary-button:not(:disabled):hover {
+    width: min(20.5rem, 96vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button {
+    transition: background-color 120ms linear, box-shadow 120ms ease, border-radius 120ms ease;
   }
 }
 

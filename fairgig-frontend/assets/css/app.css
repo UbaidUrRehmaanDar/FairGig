@@ -63,3 +63,50 @@ select:has(option:checked[disabled][value='']) {
   color: var(--fg-placeholder-color);
   font-weight: 500;
 }
+
+@keyframes fg-primary-bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-2px) scale(1.04);
+  }
+  75% {
+    transform: translateY(0) scale(0.992);
+  }
+  100% {
+    transform: translateY(-1px) scale(1.02);
+  }
+}
+
+/* Design language: pill primary button with subtle bounce + shape change on hover */
+.primary-button {
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 120ms linear,
+    box-shadow 140ms ease,
+    background-color 120ms linear;
+  will-change: transform;
+}
+
+.primary-button:hover:not(:disabled):not(.is-loading) {
+  border-radius: 1rem !important;
+  animation: fg-primary-bounce 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: brightness(0.97);
+}
+
+.primary-button:active:not(:disabled):not(.is-loading) {
+  transform: translateY(0) scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button {
+    transition: filter 120ms linear, box-shadow 140ms ease, background-color 120ms linear;
+  }
+
+  .primary-button:hover:not(:disabled):not(.is-loading) {
+    animation: none;
+    border-radius: 1rem !important;
+  }
+}
