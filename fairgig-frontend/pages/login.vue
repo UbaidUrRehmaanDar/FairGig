@@ -92,16 +92,13 @@
             </p>
           </div>
 
-          <div class="remember-me">
-            <div class="toggle-switch">
-              <input id="remember-device" v-model="rememberDevice" type="checkbox" />
-              <div class="slider"></div>
-            </div>
-            <label for="remember-device">Remember device</label>
-          </div>
-
-          <p v-if="authMessage" :class="['auth-message', authMessageType]">{{ authMessage }}</p>
-
+<div class="remember-me">
+  <label class="switch" for="remember-device">
+    <input id="remember-device" v-model="rememberDevice" type="checkbox" />
+    <span class="slider"></span>
+  </label>
+  <label class="remember-label" for="remember-device">Remember device</label>
+</div>
           <div class="actions">
             <button
               type="submit"
@@ -130,54 +127,24 @@
 </template>
 
 <script setup lang="ts">
-<<<<<<< HEAD
-import { ref } from 'vue'
-import { navigateTo } from 'nuxt/app'
-import { useAuthStore } from '../stores/auth'
-=======
 import { onMounted, ref } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { navigateTo } from 'nuxt/app'
 import { useSupabaseClient } from '#imports'
 
 const supabase = useSupabaseClient()
->>>>>>> 993f27402b9e08646d67a1dc589889433516c449
 
 const email = ref('')
 const password = ref('')
 const rememberDevice = ref(false)
 const isLoggingIn = ref(false)
 const showPassword = ref(false)
-const authMessage = ref('')
-const authMessageType = ref<'error' | 'success'>('error')
-
-const authStore = useAuthStore()
 
 const errors = ref<{ email: string; password: string }>({
   email: '',
   password: ''
 })
 
-<<<<<<< HEAD
-=======
-const roleToRoute: Record<string, string> = {
-  worker: '/dashboard/worker',
-  verifier: '/dashboard/verifier',
-  advocate: '/dashboard/advocate'
-}
-
-const resolveRole = (user: User | null) => {
-  const roleCandidate =
-    (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
-    (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
-    'worker'
-
-  return roleCandidate.toLowerCase().trim()
-}
-
-const routeForRole = (role: string) => roleToRoute[role] || roleToRoute.worker
-
->>>>>>> 993f27402b9e08646d67a1dc589889433516c449
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
 }
@@ -206,48 +173,45 @@ const resolveTargetByRole = (role: string) => {
   return '/dashboard/worker'
 }
 
+const resolveRole = (user: User | null) => {
+  const roleCandidate =
+    (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
+    (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
+    'worker'
+
+  return roleCandidate.toLowerCase().trim()
+}
+
 const handleLogin = async () => {
   if (isLoggingIn.value) return
   if (!validateForm()) return
 
-  authMessage.value = ''
   isLoggingIn.value = true
-
   try {
-<<<<<<< HEAD
-    // Placeholder store; real auth will set user/role later.
-    await authStore.signIn()
-    await navigateTo(resolveTargetByRole(authStore.role))
-  } catch {
-    errors.value.password = 'Login failed. Please check your credentials and try again.'
-=======
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.value,
+      email: email.value.toLowerCase(),
       password: password.value
     })
 
     if (error) {
-      authMessageType.value = 'error'
-      authMessage.value = error.message || 'Invalid credentials. Please try again.'
+      const message = String(error.message || '').toLowerCase()
+      if (message.includes('email not confirmed')) {
+        errors.value.password = 'Please confirm your email first, then try logging in.'
+        return
+      }
+
+      errors.value.password = error.message || 'Login failed. Please check your credentials and try again.'
       return
     }
 
     if (!data.user) {
-      authMessageType.value = 'error'
-      authMessage.value = 'No user was returned from Supabase. Please try again.'
+      errors.value.password = 'Login failed. Please check your credentials and try again.'
       return
     }
 
-    if (!rememberDevice.value) {
-      authMessageType.value = 'success'
-      authMessage.value = 'Signed in. Session will still persist in this browser.'
-    }
-
-    await navigateTo(routeForRole(resolveRole(data.user)))
-  } catch (error: any) {
-    authMessageType.value = 'error'
-    authMessage.value = error?.message || 'Login failed. Please try again.'
->>>>>>> 993f27402b9e08646d67a1dc589889433516c449
+    await navigateTo(resolveTargetByRole(resolveRole(data.user)))
+  } catch {
+    errors.value.password = 'Login failed. Please check your credentials and try again.'
   } finally {
     isLoggingIn.value = false
   }
@@ -256,7 +220,7 @@ const handleLogin = async () => {
 onMounted(async () => {
   const { data } = await supabase.auth.getSession()
   if (data.session?.user) {
-    await navigateTo(routeForRole(resolveRole(data.session.user)))
+    await navigateTo(resolveTargetByRole(resolveRole(data.session.user)))
   }
 })
 </script>
@@ -518,24 +482,6 @@ onMounted(async () => {
   font-weight: 600;
   color: #d92d20;
   line-height: 1.2;
-}
-
-.auth-message {
-  margin: 0.25rem 0 0;
-  padding: 0.65rem 0.85rem;
-  border-radius: 0.75rem;
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-
-.auth-message.error {
-  color: #8a1f1f;
-  background: #ffe9e9;
-}
-
-.auth-message.success {
-  color: #1d6f42;
-  background: #e7f8ef;
 }
 
 .icon-button {
