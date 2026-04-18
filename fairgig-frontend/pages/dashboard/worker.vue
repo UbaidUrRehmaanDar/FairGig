@@ -1,44 +1,133 @@
 <template>
   <div class="worker-dashboard-page">
     <main class="dashboard-main">
-      <div class="page-header">
-        <div>
-          <h1>Worker Dashboard</h1>
-          <p>Track your earnings, verification status, and quick actions.</p>
+      <section class="dashboard-hero">
+        <div class="hero-copy">
+          <p class="hero-eyebrow">Worker overview</p>
+          <h1>Salam, {{ displayName }}</h1>
+          <p class="hero-subtext">{{ cityLabel }} · {{ workerTrackLabel }}</p>
         </div>
-        <NuxtLink to="/shifts/log" class="header-action">+ Log Shift</NuxtLink>
-      </div>
 
-      <!-- Summary Cards -->
-      <section class="summary-grid" v-if="!summaryLoading && summary">
+        <NuxtLink to="/shifts/log" class="header-action">
+          <span>Log a shift</span>
+          <span class="icon action-icon">north_east</span>
+        </NuxtLink>
+      </section>
+
+      <section class="summary-grid" v-if="!summaryLoading">
         <article class="summary-card">
-          <div class="card-label">This Month</div>
-          <div class="card-value">PKR {{ formatMoney(summary.this_month) }}</div>
+          <div class="card-label">Net (all shifts)</div>
+          <div class="card-value">Rs {{ formatMoney(totalNetAllShifts) }}</div>
+          <p class="card-helper">This month: Rs {{ formatMoney(summary?.this_month) }}</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">This Week</div>
-          <div class="card-value">PKR {{ formatMoney(summary.this_week) }}</div>
+          <div class="card-label">Effective hourly</div>
+          <div class="card-value">
+            Rs {{ formatMoney(effectiveHourly) }}<span class="card-suffix">/hr</span>
+          </div>
+
+          <p class="card-helper" v-if="hourlyDeltaPct !== null">
+            City median
+            <span :class="hourlyDeltaClass">{{ formatSignedPercent(hourlyDeltaPct) }}</span>
+            (Rs {{ formatMoney(cityMedian?.median_hourly) }}/hr)
+          </p>
+          <p class="card-helper" v-else>City median unavailable</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">Avg Hourly</div>
-          <div class="card-value">PKR {{ formatMoney(summary.avg_hourly) }}/hr</div>
+          <div class="card-label">Avg commission (all shifts)</div>
+          <div class="card-value">{{ formatPercent(avgCommissionLast30) }}%</div>
+          <p class="card-helper">Across all platforms</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">Platform Takes</div>
-          <div class="card-value highlight">{{ formatPercent(summary.avg_commission_pct) }}%</div>
-        </article>
-
-        <article class="summary-card">
-          <div class="card-label">Total Shifts</div>
-          <div class="card-value">{{ formatCount(summary.total_shifts) }}</div>
+          <div class="card-label">Verified shifts</div>
+          <div class="card-value">
+            {{ verifiedShiftCount }}<span class="card-suffix">/{{ totalShiftCount }}</span>
+          </div>
+          <p class="card-helper"><span class="icon icon-inline">shield</span> earnings</p>
         </article>
       </section>
 
       <section class="summary-grid" v-else>
-        <article class="summary-card skeleton-card" v-for="n in 5" :key="n"></article>
+        <article class="summary-card skeleton-card" v-for="n in 4" :key="n"></article>
+      </section>
+
+      <section class="chart-card">
+        <div class="chart-header">
+          <h2>Weekly net earnings</h2>
+          <p>Real shift data for the last 30 days</p>
+        </div>
+
+        <div v-if="loading && !shifts.length" class="chart-state">Loading weekly trend...</div>
+        <div v-else-if="!hasWeeklyData" class="chart-state">
+          No shifts in the last 30 days yet. Log a shift to start your earnings trendline.
+        </div>
+
+        <div v-else class="chart-shell">
+          <svg
+            class="earnings-chart"
+            viewBox="0 0 760 310"
+            role="img"
+            aria-labelledby="weekly-net-title weekly-net-desc"
+          >
+            <title id="weekly-net-title">Weekly net earnings line chart</title>
+            <desc id="weekly-net-desc">Net earnings grouped by week over the last 30 days.</desc>
+
+            <defs>
+              <linearGradient id="weeklyAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--fg-primary)" stop-opacity="0.32" />
+                <stop offset="100%" stop-color="var(--fg-primary)" stop-opacity="0.04" />
+              </linearGradient>
+            </defs>
+
+            <g class="y-grid">
+              <template v-for="tick in chartTicks" :key="`tick-${tick.value}`">
+                <line :x1="chartDims.left" :x2="chartDims.right" :y1="tick.y" :y2="tick.y" />
+                <text :x="chartDims.left - 12" :y="tick.y + 4">{{ formatAxisMoney(tick.value) }}</text>
+              </template>
+            </g>
+
+            <path v-if="chartAreaPath" :d="chartAreaPath" class="chart-area" />
+            <path v-if="chartLinePath" :d="chartLinePath" class="chart-line" />
+
+            <g class="chart-points">
+              <g v-for="(point, index) in chartPoints" :key="point.key">
+                <circle
+                  class="chart-point-hit"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="12"
+                  tabindex="0"
+                  @mouseenter="setActivePoint(index)"
+                  @focus="setActivePoint(index)"
+                />
+                <circle class="chart-point" :cx="point.x" :cy="point.y" r="4.5" />
+              </g>
+            </g>
+
+            <g class="x-axis">
+              <text
+                v-for="point in chartPoints"
+                :key="`label-${point.key}`"
+                :x="point.x"
+                :y="chartDims.bottom + 26"
+              >
+                {{ point.label }}
+              </text>
+            </g>
+          </svg>
+
+          <div
+            v-if="activePoint"
+            class="chart-tooltip"
+            :style="{ left: `${activePoint.xPercent}%`, top: `${activePoint.yPercent}%` }"
+          >
+            <strong>{{ activePoint.label }}</strong>
+            <span>Rs {{ formatMoney(activePoint.value) }}</span>
+          </div>
+        </div>
       </section>
 
       <p v-if="summaryError" class="table-empty">{{ summaryError }}</p>
@@ -205,11 +294,52 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' as any })
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useShiftsStore } from '../../stores/shifts'
 
+type ShiftLike = {
+  shift_date?: string | null
+  net_received?: number | string | null
+  hours_worked?: number | string | null
+  gross_earned?: number | string | null
+  platform_deductions?: number | string | null
+  verification_status?: string | null
+  platform?: string | null
+}
+
+type NormalizedShift = {
+  date: Date
+  netReceived: number
+  grossEarned: number
+  platformDeductions: number
+  hoursWorked: number
+  verificationStatus: string
+  platform: string
+}
+
+type WeeklyBucket = {
+  key: string
+  label: string
+  value: number
+}
+
+type ChartPoint = WeeklyBucket & {
+  x: number
+  y: number
+}
+
+const chartDims = {
+  width: 760,
+  height: 310,
+  left: 64,
+  right: 732,
+  top: 24,
+  bottom: 258,
+} as const
+
 const shiftsStore = useShiftsStore()
+const supabase = useSupabaseClient()
 const {
   shifts,
   shiftsError,
@@ -220,11 +350,365 @@ const {
   loading,
   anomalies,
   anomalyError,
-  anomalyScannedAt
+  anomalyScannedAt,
 } = storeToRefs(shiftsStore)
-const anomalyLoading = ref(false)
 
-const latestPlatform = computed(() => String(shifts.value?.[0]?.platform || ''))
+const anomalyLoading = ref(false)
+const sessionUser = ref<any>(null)
+const activePointIndex = ref<number | null>(null)
+
+const latestPlatform = computed(() =>
+  String((shifts.value?.[0] as ShiftLike | undefined)?.platform || '').trim()
+)
+
+const startOfDay = (value: Date) => {
+  const d = new Date(value)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+const addDays = (value: Date, days: number) => {
+  const d = new Date(value)
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+const startOfWeek = (value: Date) => {
+  const d = startOfDay(value)
+  const mondayOffset = (d.getDay() + 6) % 7
+  d.setDate(d.getDate() - mondayOffset)
+  return d
+}
+
+const toDateKey = (value: Date) => {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const parseShiftDate = (value: string | null | undefined) => {
+  const text = String(value || '').trim()
+  if (!text) return null
+
+  const d = new Date(`${text}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+const currentRange = computed(() => {
+  const end = startOfDay(new Date())
+  const start = addDays(end, -29)
+  return { start, end }
+})
+
+const previousRange = computed(() => {
+  const end = addDays(currentRange.value.start, -1)
+  const start = addDays(end, -29)
+  return { start, end }
+})
+
+const normalizeStatus = (status?: string | null) => {
+  const v = String(status || 'unverified')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+  if (v === 'verified') return 'verified'
+  if (v === 'pending' || v === 'in_review' || v === 'under_review') return 'pending'
+  if (v === 'flagged' || v === 'disputed' || v === 'unverifiable' || v === 'rejected') return 'flagged'
+  return 'unverified'
+}
+
+const normalizedShifts = computed<NormalizedShift[]>(() => {
+  return (shifts.value || [])
+    .map((record) => {
+      const shift = record as ShiftLike
+      const date = parseShiftDate(shift.shift_date)
+      if (!date) return null
+
+      return {
+        date,
+        netReceived: Number(shift.net_received || 0),
+        grossEarned: Number(shift.gross_earned || 0),
+        platformDeductions: Number(shift.platform_deductions || 0),
+        hoursWorked: Number(shift.hours_worked || 0),
+        verificationStatus: String(shift.verification_status || ''),
+        platform: String(shift.platform || ''),
+      }
+    })
+    .filter((item): item is NormalizedShift => Boolean(item))
+})
+
+const totalNetAllShifts = computed(() => {
+  return normalizedShifts.value.reduce((sum, shift) => sum + shift.netReceived, 0)
+})
+
+const totalShiftCount = computed(() => normalizedShifts.value.length)
+
+const shiftsInLast30Days = computed(() => {
+  const { start, end } = currentRange.value
+  return normalizedShifts.value.filter((shift) => shift.date >= start && shift.date <= end)
+})
+
+const shiftsInPrior30Days = computed(() => {
+  const { start, end } = previousRange.value
+  return normalizedShifts.value.filter((shift) => shift.date >= start && shift.date <= end)
+})
+
+const netLast30Days = computed(() => {
+  return shiftsInLast30Days.value.reduce((sum, shift) => sum + shift.netReceived, 0)
+})
+
+const netPrior30Days = computed(() => {
+  return shiftsInPrior30Days.value.reduce((sum, shift) => sum + shift.netReceived, 0)
+})
+
+const netTrendPct = computed<number | null>(() => {
+  if (netPrior30Days.value <= 0) return null
+  return ((netLast30Days.value - netPrior30Days.value) / netPrior30Days.value) * 100
+})
+
+const netTrendClass = computed(() => {
+  if (netTrendPct.value === null) return 'trend-neutral'
+  return netTrendPct.value >= 0 ? 'trend-positive' : 'trend-negative'
+})
+
+const formatSignedPercent = (value: number) => {
+  if (!Number.isFinite(value)) return '0.0%'
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
+}
+
+const netTrendText = computed(() => {
+  if (netTrendPct.value === null) return 'No prior 30-day baseline'
+  return `${formatSignedPercent(netTrendPct.value)} vs prior 30`
+})
+
+const effectiveHourly = computed(() => {
+  const totals = normalizedShifts.value.reduce(
+    (acc, shift) => {
+      if (shift.hoursWorked > 0) {
+        acc.hours += shift.hoursWorked
+        acc.net += shift.netReceived
+      }
+      return acc
+    },
+    { net: 0, hours: 0 }
+  )
+
+  if (totals.hours > 0) {
+    return totals.net / totals.hours
+  }
+
+  return Number(summary.value?.avg_hourly || 0)
+})
+
+const hourlyDeltaPct = computed<number | null>(() => {
+  const median = Number(cityMedian.value?.median_hourly || 0)
+  if (!Number.isFinite(median) || median <= 0) return null
+  return ((effectiveHourly.value - median) / median) * 100
+})
+
+const hourlyDeltaClass = computed(() => {
+  if (hourlyDeltaPct.value === null) return 'trend-neutral'
+  return hourlyDeltaPct.value >= 0 ? 'delta-positive' : 'delta-negative'
+})
+
+const avgCommissionLast30 = computed(() => {
+  const totals = normalizedShifts.value.reduce(
+    (acc, shift) => {
+      acc.gross += shift.grossEarned
+      acc.deductions += shift.platformDeductions
+      return acc
+    },
+    { gross: 0, deductions: 0 }
+  )
+
+  if (totals.gross > 0) {
+    return (totals.deductions / totals.gross) * 100
+  }
+
+  return Number(summary.value?.avg_commission_pct || 0)
+})
+
+const verifiedShiftCount = computed(() => {
+  return normalizedShifts.value.filter((shift) => normalizeStatus(shift.verificationStatus) === 'verified')
+    .length
+})
+
+const inferCategoryFromPlatform = (platform: string) => {
+  const value = String(platform || '').toLowerCase().trim()
+  if (!value) return 'Gig Worker'
+
+  const rideHailing = ['careem', 'indrive', 'uber', 'bykea', 'yango']
+  const delivery = ['foodpanda', 'cheetay', 'delivery', 'courier']
+
+  if (rideHailing.some((name) => value.includes(name))) return 'Ride Hailing'
+  if (delivery.some((name) => value.includes(name))) return 'Delivery'
+  return 'Gig Worker'
+}
+
+const workerTrackLabel = computed(() => {
+  const metadataCategory = String(sessionUser.value?.user_metadata?.platform_category || '')
+    .trim()
+    .toLowerCase()
+
+  if (metadataCategory === 'transport') return 'Ride Hailing'
+  if (metadataCategory === 'delivery') return 'Delivery'
+  if (metadataCategory === 'courier') return 'Courier'
+  if (metadataCategory === 'other') return 'Other Gig Work'
+
+  return inferCategoryFromPlatform(latestPlatform.value)
+})
+
+const cityLabel = computed(() => {
+  const metadataCity = String(sessionUser.value?.user_metadata?.city_zone || '').trim()
+  return metadataCity || 'City zone pending'
+})
+
+const displayName = computed(() => {
+  const fullName = String(
+    sessionUser.value?.user_metadata?.full_name || sessionUser.value?.user_metadata?.name || ''
+  ).trim()
+
+  if (fullName) {
+    return fullName.split(/\s+/)[0]
+  }
+
+  const email = String(sessionUser.value?.email || '').trim()
+  if (email.includes('@')) {
+    return email.split('@')[0]
+  }
+
+  return 'Worker'
+})
+
+const formatWeekLabel = (value: Date) => {
+  return value.toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })
+}
+
+const weeklySeries = computed<WeeklyBucket[]>(() => {
+  const { start, end } = currentRange.value
+  const firstWeek = startOfWeek(start)
+  const lastWeek = startOfWeek(end)
+
+  const totalsByWeek = new Map<string, number>()
+  for (const shift of shiftsInLast30Days.value) {
+    const key = toDateKey(startOfWeek(shift.date))
+    totalsByWeek.set(key, (totalsByWeek.get(key) || 0) + shift.netReceived)
+  }
+
+  const buckets: WeeklyBucket[] = []
+  for (let cursor = new Date(firstWeek); cursor.getTime() <= lastWeek.getTime(); cursor = addDays(cursor, 7)) {
+    const key = toDateKey(cursor)
+    buckets.push({
+      key,
+      label: formatWeekLabel(cursor),
+      value: Number(totalsByWeek.get(key) || 0),
+    })
+  }
+
+  return buckets
+})
+
+const hasWeeklyData = computed(() => shiftsInLast30Days.value.length > 0)
+
+const niceCeil = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return 1000
+  const magnitude = Math.pow(10, Math.floor(Math.log10(value)))
+  const normalized = value / magnitude
+
+  if (normalized <= 1) return magnitude
+  if (normalized <= 2) return 2 * magnitude
+  if (normalized <= 5) return 5 * magnitude
+  return 10 * magnitude
+}
+
+const chartCeiling = computed(() => {
+  const max = Math.max(...weeklySeries.value.map((point) => point.value), 0)
+  if (max <= 0) return 1000
+  return niceCeil(max * 1.15)
+})
+
+const chartTicks = computed(() => {
+  const steps = 4
+  const plotHeight = chartDims.bottom - chartDims.top
+
+  return Array.from({ length: steps + 1 }, (_, index) => {
+    const ratio = index / steps
+    return {
+      value: chartCeiling.value * (1 - ratio),
+      y: chartDims.top + plotHeight * ratio,
+    }
+  })
+})
+
+const chartPoints = computed<ChartPoint[]>(() => {
+  if (!weeklySeries.value.length) return []
+
+  const plotWidth = chartDims.right - chartDims.left
+  const plotHeight = chartDims.bottom - chartDims.top
+
+  return weeklySeries.value.map((point, index) => {
+    const x =
+      weeklySeries.value.length === 1
+        ? (chartDims.left + chartDims.right) / 2
+        : chartDims.left + (plotWidth * index) / (weeklySeries.value.length - 1)
+    const y = chartDims.bottom - (Math.max(point.value, 0) / chartCeiling.value) * plotHeight
+
+    return {
+      ...point,
+      x,
+      y,
+    }
+  })
+})
+
+const chartLinePath = computed(() => {
+  if (!chartPoints.value.length) return ''
+  return chartPoints.value
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' ')
+})
+
+const chartAreaPath = computed(() => {
+  if (!chartPoints.value.length) return ''
+
+  const first = chartPoints.value[0]
+  const last = chartPoints.value[chartPoints.value.length - 1]
+  const pathBody = chartPoints.value.map((point) => `L ${point.x} ${point.y}`).join(' ')
+
+  return `M ${first.x} ${chartDims.bottom} ${pathBody} L ${last.x} ${chartDims.bottom} Z`
+})
+
+watch(
+  chartPoints,
+  (points) => {
+    activePointIndex.value = points.length ? points.length - 1 : null
+  },
+  { immediate: true }
+)
+
+const activePoint = computed(() => {
+  if (!chartPoints.value.length) return null
+
+  const safeIndex =
+    activePointIndex.value === null
+      ? chartPoints.value.length - 1
+      : Math.min(Math.max(activePointIndex.value, 0), chartPoints.value.length - 1)
+
+  const point = chartPoints.value[safeIndex]
+  return {
+    ...point,
+    xPercent: (point.x / chartDims.width) * 100,
+    yPercent: (point.y / chartDims.height) * 100,
+  }
+})
+
+const setActivePoint = (index: number) => {
+  activePointIndex.value = index
+}
 
 const formatMoney = (n: number | string | null | undefined) => {
   const num = Number(n || 0)
@@ -238,10 +722,13 @@ const formatPercent = (n: number | string | null | undefined) => {
   return num.toFixed(1)
 }
 
-const formatCount = (n: number | string | null | undefined) => {
+const formatAxisMoney = (n: number) => {
   const num = Number(n || 0)
-  if (!Number.isFinite(num)) return '0'
-  return Math.round(num).toLocaleString('en-PK')
+  if (!Number.isFinite(num) || num <= 0) return '0k'
+
+  const inThousands = num / 1000
+  const precision = inThousands >= 10 ? 0 : 1
+  return `${inThousands.toFixed(precision).replace(/\.0$/, '')}k`
 }
 
 const commissionPct = (s: any) => {
@@ -249,18 +736,6 @@ const commissionPct = (s: any) => {
   const ded = Number(s?.platform_deductions || 0)
   if (!gross) return '0.0'
   return ((ded / gross) * 100).toFixed(1)
-}
-
-const normalizeStatus = (status?: string | null) => {
-  const v = String(status || 'unverified')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-
-  if (v === 'verified') return 'verified'
-  if (v === 'pending' || v === 'in_review' || v === 'under_review') return 'pending'
-  if (v === 'flagged' || v === 'disputed' || v === 'unverifiable' || v === 'rejected') return 'flagged'
-  return 'unverified'
 }
 
 const refreshCityMedian = async () => {
@@ -289,7 +764,7 @@ const formatScanTime = (value: string | null | undefined) => {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
@@ -303,8 +778,13 @@ const runAnomalyScan = async () => {
   }
 }
 
+const hydrateSessionUser = async () => {
+  const { data } = await supabase.auth.getSession()
+  sessionUser.value = data.session?.user || null
+}
+
 onMounted(async () => {
-  await Promise.allSettled([shiftsStore.fetchShifts(), shiftsStore.fetchSummary()])
+  await Promise.allSettled([shiftsStore.fetchShifts(), shiftsStore.fetchSummary(), hydrateSessionUser()])
 
   if (latestPlatform.value) {
     await shiftsStore.fetchCityMedian(latestPlatform.value).catch(() => null)
@@ -320,7 +800,6 @@ onMounted(async () => {
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
-  padding: 2rem;
 }
 
 .dashboard-main {
@@ -330,33 +809,41 @@ onMounted(async () => {
   gap: 1.25rem;
 }
 
-.page-header {
+.dashboard-hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
 }
 
-.page-header h1 {
-  font-size: 2rem;
+.hero-copy h1 {
+  font-size: clamp(1.9rem, 3.7vw, 2.45rem);
   font-weight: 800;
   letter-spacing: -0.025em;
 }
 
-.page-header p {
-  margin-top: 0.35rem;
-  color: var(--fg-muted);
+.hero-eyebrow {
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg-primary) 72%, var(--fg-muted));
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
-/* Primary CTA with your bounce morphology */
+.hero-subtext {
+  margin-top: 0.35rem;
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+
 .header-action {
-  width: 18rem;
-  height: 3.2rem;
-  padding: 0 1.25rem;
+  min-height: 2.65rem;
+  padding: 0.3rem 1rem;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
 
   background-color: var(--fg-primary);
   color: #f2f1ff;
@@ -377,12 +864,21 @@ onMounted(async () => {
   box-shadow: var(--fg-shadow);
 }
 
+.action-icon {
+  font-size: 1rem;
+  transition: transform 140ms ease;
+}
+
 .header-action:hover {
   border-radius: 1rem;
   background: var(--fg-surface);
   color: var(--fg-primary);
   border-color: var(--fg-border);
   box-shadow: var(--fg-shadow);
+}
+
+.header-action:hover .action-icon {
+  transform: translate(1px, -1px);
 }
 
 .header-action:active {
@@ -404,28 +900,71 @@ onMounted(async () => {
   background: var(--fg-surface);
   border: 1px solid var(--fg-border);
   border-radius: 1rem;
-  padding: 1rem;
+  padding: 1.05rem 1.15rem;
+  min-height: 7.7rem;
   box-shadow: var(--fg-shadow);
 }
 
 .card-label {
   color: var(--fg-muted);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  font-weight: 700;
 }
 
 .card-value {
-  margin-top: 0.45rem;
-  font-size: 1.35rem;
+  margin-top: 0.52rem;
+  font-size: clamp(1.8rem, 3vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.08;
+}
+
+.card-suffix {
+  margin-left: 0.2rem;
+  color: var(--fg-muted);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.card-helper {
+  margin-top: 0.64rem;
+  color: var(--fg-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.card-helper.trend-positive {
+  color: var(--fg-success);
+}
+
+.card-helper.trend-negative {
+  color: #b54708;
+}
+
+.card-helper.trend-neutral {
+  color: var(--fg-muted);
+}
+
+.delta-positive {
+  color: var(--fg-success);
   font-weight: 800;
 }
 
-.card-value.highlight {
-  color: var(--fg-primary);
+.delta-negative {
+  color: #b54708;
+  font-weight: 800;
+}
+
+.icon-inline {
+  font-size: 0.92rem;
 }
 
 .skeleton-card {
-  min-height: 82px;
+  min-height: 7.7rem;
   background: linear-gradient(
     110deg,
     var(--fg-surface-muted) 8%,
@@ -441,6 +980,7 @@ onMounted(async () => {
   }
 }
 
+.chart-card,
 .comparison-card,
 .table-card,
 .anomaly-card {
@@ -449,6 +989,124 @@ onMounted(async () => {
   border-radius: 1rem;
   padding: 1rem;
   box-shadow: var(--fg-shadow);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.chart-header h2 {
+  font-size: 1.18rem;
+  font-weight: 800;
+}
+
+.chart-header p {
+  color: var(--fg-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.chart-state {
+  margin-top: 0.85rem;
+  color: var(--fg-muted);
+  font-size: 0.92rem;
+}
+
+.chart-shell {
+  margin-top: 0.85rem;
+  position: relative;
+  border: 1px solid var(--fg-border);
+  border-radius: 0.95rem;
+  padding: 0.75rem 0.75rem 0.38rem;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--fg-primary) 4%, var(--fg-surface)) 0%,
+      var(--fg-surface) 45%
+    );
+}
+
+.earnings-chart {
+  width: 100%;
+  height: clamp(230px, 34vw, 330px);
+  display: block;
+}
+
+.y-grid line {
+  stroke: color-mix(in srgb, var(--fg-muted) 18%, transparent);
+  stroke-dasharray: 5 4;
+}
+
+.y-grid text {
+  fill: var(--fg-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-anchor: end;
+}
+
+.x-axis text {
+  fill: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.chart-area {
+  fill: url(#weeklyAreaGradient);
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--fg-primary);
+  stroke-width: 2.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-point {
+  fill: var(--fg-surface);
+  stroke: var(--fg-primary);
+  stroke-width: 2.4;
+}
+
+.chart-point-hit {
+  fill: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.chart-point-hit:focus-visible {
+  stroke: color-mix(in srgb, var(--fg-primary) 42%, transparent);
+  stroke-width: 2;
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -110%);
+  border: 1px solid var(--fg-border);
+  border-radius: 0.7rem;
+  padding: 0.4rem 0.6rem;
+  box-shadow: var(--fg-shadow);
+  background: var(--fg-surface);
+  pointer-events: none;
+  min-width: 6.1rem;
+}
+
+.chart-tooltip strong {
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  font-size: 0.67rem;
+  display: block;
+}
+
+.chart-tooltip span {
+  color: var(--fg-text);
+  font-size: 0.88rem;
+  font-weight: 800;
 }
 
 .comparison-header,
@@ -804,6 +1462,35 @@ th {
 }
 
 /* Responsive */
+@media (max-width: 679px) {
+  .dashboard-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-action {
+    width: 100%;
+    max-width: none;
+  }
+
+  .hero-copy h1 {
+    font-size: 1.78rem;
+  }
+
+  .summary-card {
+    padding: 0.85rem;
+  }
+
+  .chart-shell {
+    padding: 0.55rem 0.45rem 0.2rem;
+  }
+
+  .chart-tooltip {
+    min-width: 5.6rem;
+    padding: 0.36rem 0.52rem;
+  }
+}
+
 @media (min-width: 680px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -824,7 +1511,7 @@ th {
 
 @media (max-width: 480px) {
   .header-action {
-    width: min(18rem, 92vw);
+    width: 100%;
   }
 }
 
@@ -843,4 +1530,4 @@ th {
   font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
-</style>
+</style> 

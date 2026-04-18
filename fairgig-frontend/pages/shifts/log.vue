@@ -116,6 +116,37 @@
             </div>
           </div>
 
+          <div class="input-group">
+            <label for="pre-submit-screenshot">Earnings Screenshot (optional)</label>
+            <div class="upload-row">
+              <input
+                id="pre-submit-screenshot"
+                :key="fileInputKey"
+                type="file"
+                accept="image/*"
+                @change="onFileChange"
+              />
+              <button
+                v-if="selectedFile"
+                type="button"
+                class="ghost-btn"
+                @click="clearSelectedFile"
+              >
+                Remove Image
+              </button>
+            </div>
+            <p class="field-hint">
+              If selected, this image will be uploaded automatically after the shift is logged.
+            </p>
+            <div v-if="screenshotPreviewUrl" class="preview-wrap">
+              <img
+                :src="screenshotPreviewUrl"
+                class="preview-image"
+                alt="Selected screenshot preview"
+              />
+            </div>
+          </div>
+
           <p v-if="message" :class="['form-message', messageType]">{{ message }}</p>
 
           <div class="actions">
@@ -131,23 +162,6 @@
           </div>
         </form>
       </section>
-
-      <section class="upload-card" v-if="lastShiftId">
-        <h2>Upload Earnings Screenshot (Optional)</h2>
-        <p>Attach proof for faster verification workflow.</p>
-
-        <div class="upload-row">
-          <input type="file" accept="image/*" @change="onFileChange" />
-          <button
-            type="button"
-            class="ghost-btn"
-            :disabled="!selectedFile || isUploading"
-            @click="uploadScreenshot"
-          >
-            {{ isUploading ? 'Uploading...' : 'Upload for Verification' }}
-          </button>
-        </div>
-      </section>
     </main>
 
     <div class="support-fab">
@@ -161,7 +175,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' as any })
 
-import { onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useShiftsStore } from '../../stores/shifts'
 import { useApi } from '../../composables/useApi'
 
@@ -190,12 +204,27 @@ const errors = reactive({
 })
 
 const isSubmitting = ref(false)
-const isUploading = ref(false)
 const message = ref('')
 const messageType = ref<'error' | 'success'>('success')
 
-const lastShiftId = ref<string | null>(null)
 const selectedFile = ref<File | null>(null)
+const screenshotPreviewUrl = ref<string | null>(null)
+const fileInputKey = ref(0)
+
+const clearSelectedFile = () => {
+  selectedFile.value = null
+  if (screenshotPreviewUrl.value) {
+    URL.revokeObjectURL(screenshotPreviewUrl.value)
+    screenshotPreviewUrl.value = null
+  }
+  fileInputKey.value += 1
+}
+
+onBeforeUnmount(() => {
+  if (screenshotPreviewUrl.value) {
+    URL.revokeObjectURL(screenshotPreviewUrl.value)
+  }
+})
 
 onMounted(() => {
   try {
@@ -260,7 +289,16 @@ const submit = async () => {
     }
 
     const result: any = await shiftsStore.logShift(payload)
-    lastShiftId.value = result?.shift_id || null
+    const shiftId = String(result?.shift_id || '').trim()
+
+    const shouldUploadNow = Boolean(shiftId && selectedFile.value)
+    if (shouldUploadNow) {
+      await uploadScreenshot(shiftId)
+      if (messageType.value === 'success') {
+        message.value = 'Shift logged and screenshot uploaded for verification.'
+      }
+      return
+    }
 
     messageType.value = 'success'
     message.value = 'Shift logged successfully.'
@@ -275,29 +313,36 @@ const submit = async () => {
 const onFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   selectedFile.value = input.files?.[0] || null
+
+  if (screenshotPreviewUrl.value) {
+    URL.revokeObjectURL(screenshotPreviewUrl.value)
+    screenshotPreviewUrl.value = null
+  }
+
+  if (selectedFile.value && selectedFile.value.type.startsWith('image/')) {
+    screenshotPreviewUrl.value = URL.createObjectURL(selectedFile.value)
+  }
 }
 
-const uploadScreenshot = async () => {
-  if (!selectedFile.value || !lastShiftId.value) return
-  isUploading.value = true
+const uploadScreenshot = async (shiftId: string) => {
+  if (!selectedFile.value || !shiftId) return
 
   try {
     const fd = new FormData()
     fd.append('file', selectedFile.value)
 
-    await authFetch(`/screenshots/upload/${lastShiftId.value}`, {
+    await authFetch(`/screenshots/upload/${shiftId}`, {
       method: 'POST',
       body: fd
     })
 
     messageType.value = 'success'
     message.value = 'Screenshot uploaded for verification.'
-    selectedFile.value = null
+    clearSelectedFile()
   } catch (e: any) {
     messageType.value = 'error'
-    message.value = e?.message || 'Failed to upload screenshot.'
-  } finally {
-    isUploading.value = false
+    message.value =
+      `Shift logged, but screenshot upload failed: ${e?.message || 'Failed to upload screenshot.'}`
   }
 }
 </script>
@@ -419,6 +464,29 @@ const uploadScreenshot = async () => {
   margin-left: 0.2rem;
 }
 
+.field-hint {
+  color: var(--fg-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-left: 0.2rem;
+}
+
+.preview-wrap {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--fg-border);
+  border-radius: 0.75rem;
+  background: var(--fg-surface-muted);
+}
+
+.preview-image {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
 .form-message {
   font-size: 0.84rem;
   font-weight: 700;
@@ -454,14 +522,6 @@ const uploadScreenshot = async () => {
   box-shadow: var(--fg-shadow);
 }
 
-.upload-card h2 {
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-.upload-card p {
-  margin-top: 0.35rem;
-  color: var(--fg-muted);
-}
 .upload-row {
   margin-top: 0.75rem;
   display: flex;

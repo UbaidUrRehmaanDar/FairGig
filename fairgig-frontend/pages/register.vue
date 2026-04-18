@@ -89,6 +89,24 @@
             <p v-if="errors.email" id="email-error" class="field-error">{{ errors.email }}</p>
           </div>
 
+          <div class="input-group">
+            <label for="role">Role</label>
+            <div class="input-with-icon">
+              <span class="icon">badge</span>
+              <select
+                id="role"
+                v-model="selectedRole"
+                :aria-invalid="!!errors.role"
+                aria-describedby="role-error"
+              >
+                <option value="worker">Worker</option>
+                <option value="verifier">Verifier</option>
+                <option value="advocate">Advocate</option>
+              </select>
+            </div>
+            <p v-if="errors.role" id="role-error" class="field-error">{{ errors.role }}</p>
+          </div>
+
           <div class="password-grid">
             <div class="input-group">
               <label for="password">Password</label>
@@ -197,6 +215,7 @@ const fullName = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const selectedRole = ref<'worker' | 'verifier' | 'advocate'>('worker')
 const acceptedTerms = ref(false)
 
 const isRegistering = ref(false)
@@ -209,16 +228,36 @@ const isDark = ref(false)
 const errors = ref<{
   fullName: string
   email: string
+  role: string
   password: string
   confirmPassword: string
   terms: string
 }>({
   fullName: '',
   email: '',
+  role: '',
   password: '',
   confirmPassword: '',
   terms: ''
 })
+
+const roleToPath = (role: string) => {
+  if (role === 'advocate') return '/dashboard/advocate'
+  if (role === 'verifier') return '/dashboard/verifier'
+  return '/dashboard/worker'
+}
+
+const resolveRole = (user: any): 'worker' | 'verifier' | 'advocate' => {
+  const roleCandidate =
+    (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
+    (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
+    selectedRole.value
+
+  const normalized = String(roleCandidate || '').trim().toLowerCase()
+  if (normalized === 'advocate') return 'advocate'
+  if (normalized === 'verifier') return 'verifier'
+  return 'worker'
+}
 
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
@@ -242,6 +281,7 @@ const toggleTheme = () => {
 const validateForm = () => {
   errors.value.fullName = ''
   errors.value.email = ''
+  errors.value.role = ''
   errors.value.password = ''
   errors.value.confirmPassword = ''
   errors.value.terms = ''
@@ -263,6 +303,10 @@ const validateForm = () => {
     errors.value.password = 'Password must be at least 8 characters.'
   }
 
+  if (!['worker', 'verifier', 'advocate'].includes(selectedRole.value)) {
+    errors.value.role = 'Please choose a valid role.'
+  }
+
   if (!confirmPassword.value) {
     errors.value.confirmPassword = 'Please confirm your password.'
   } else if (confirmPassword.value !== password.value) {
@@ -276,6 +320,7 @@ const validateForm = () => {
   return (
     !errors.value.fullName &&
     !errors.value.email &&
+    !errors.value.role &&
     !errors.value.password &&
     !errors.value.confirmPassword &&
     !errors.value.terms
@@ -315,7 +360,7 @@ const fallbackNameFromEmail = (emailValue: string) => {
     .trim()
 }
 
-const ensureWorkerProfile = async () => {
+const ensureProfile = async (role: 'worker' | 'verifier' | 'advocate') => {
   const normalizedName =
     String(fullName.value || '').trim() || fallbackNameFromEmail(String(email.value || '').trim())
 
@@ -326,7 +371,7 @@ const ensureWorkerProfile = async () => {
         full_name: normalizedName,
         city_zone: 'Unknown',
         platform_category: 'ride_hailing',
-        role: 'worker'
+        role
       })
     })
   } catch {
@@ -348,7 +393,7 @@ const handleRegister = async () => {
       options: {
         data: {
           full_name: fullName.value,
-          role: 'worker'
+          role: selectedRole.value
         },
         emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/confirm` : undefined
       }
@@ -363,10 +408,11 @@ const handleRegister = async () => {
         })
 
         if (!signInError && signInData.user) {
-          await ensureWorkerProfile()
+          const role = resolveRole(signInData.user)
+          await ensureProfile(role)
           statusType.value = 'success'
           statusMessage.value = 'Account already exists. Signed in successfully.'
-          await navigateTo('/dashboard/worker')
+          await navigateTo(roleToPath(role))
           return
         }
 
@@ -392,9 +438,10 @@ const handleRegister = async () => {
     statusType.value = 'success'
 
     if (data.session?.user) {
-      await ensureWorkerProfile()
+      const role = resolveRole(data.session.user)
+      await ensureProfile(role)
       statusMessage.value = 'Account created successfully.'
-      await navigateTo('/dashboard/worker')
+      await navigateTo(roleToPath(role))
       return
     }
 
@@ -418,7 +465,7 @@ onMounted(async () => {
 
   const { data } = await supabase.auth.getSession()
   if (data.session?.user) {
-    await navigateTo('/dashboard/worker')
+    await navigateTo(roleToPath(resolveRole(data.session.user)))
   }
 })
 </script>
@@ -675,12 +722,34 @@ onMounted(async () => {
   transition: box-shadow 0.2s, background-color 0.2s;
 }
 
+.input-with-icon select {
+  width: 100%;
+  padding: 1rem 3.25rem 1rem 3rem;
+  background-color: var(--fg-surface-muted);
+  border: none;
+  border-radius: 1rem;
+  color: var(--fg-text);
+  outline: none;
+  transition: box-shadow 0.2s, background-color 0.2s;
+  appearance: none;
+}
+
 .input-with-icon input:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
   background-color: var(--fg-surface);
 }
 
+.input-with-icon select:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
+  background-color: var(--fg-surface);
+}
+
 .input-with-icon input[aria-invalid='true'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-danger) 20%, transparent);
+  background-color: color-mix(in srgb, var(--fg-danger) 10%, var(--fg-surface));
+}
+
+.input-with-icon select[aria-invalid='true'] {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-danger) 20%, transparent);
   background-color: color-mix(in srgb, var(--fg-danger) 10%, var(--fg-surface));
 }

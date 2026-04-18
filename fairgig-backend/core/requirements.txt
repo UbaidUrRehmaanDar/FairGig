@@ -4,6 +4,6 @@ asyncpg
 python-jose[cryptography]
 httpx
 python-multipart
-supabase
+supabase==2.15.3
 pydantic
 python-dotenv
