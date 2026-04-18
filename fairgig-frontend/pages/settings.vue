@@ -370,6 +370,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.settings-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--fg-bg);
+  color: var(--fg-text);
+  font-family: 'Raleway', sans-serif;
+}
+
 .settings-main {
   max-width: 1120px;
   margin: 0 auto;
@@ -394,14 +402,34 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+/* Top action - same UX language */
 .header-action {
-  border: 0;
+  width: 11rem;
+  height: 3rem;
+  border: 1px solid transparent;
   background: var(--fg-primary);
   color: #fff;
-  font-weight: 800;
-  padding: 0.65rem 1rem;
+  font-weight: 900;
   border-radius: 9999px;
   cursor: pointer;
+  box-shadow: var(--fg-shadow);
+  transition:
+    border-radius 0ms linear,
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease;
+}
+.header-action:hover:not(:disabled) {
+  border-radius: 1rem;
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  box-shadow: var(--fg-shadow);
+}
+.header-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 .header-action:disabled {
   opacity: 0.7;
@@ -415,6 +443,15 @@ onMounted(async () => {
   padding: 1.1rem;
   margin-bottom: 1rem;
   box-shadow: var(--fg-shadow);
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 170ms ease,
+    border-color 140ms ease;
+}
+.panel-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--fg-primary) 30%, var(--fg-border));
+  box-shadow: 0 16px 28px -18px color-mix(in srgb, var(--fg-primary) 45%, transparent);
 }
 
 .panel-header {
@@ -479,6 +516,11 @@ onMounted(async () => {
   background: var(--fg-surface);
   border-radius: 0.95rem;
   padding: 0.65rem 0.75rem;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.input-with-icon:focus-within {
+  border-color: color-mix(in srgb, var(--fg-primary) 45%, var(--fg-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 15%, transparent);
 }
 
 .input-with-icon .icon {
@@ -494,6 +536,7 @@ onMounted(async () => {
   outline: none;
   background: transparent;
   color: var(--fg-text);
+  font-size: 16px;
 }
 
 .actions {
@@ -502,28 +545,68 @@ onMounted(async () => {
   gap: 0.65rem;
 }
 
+/* Primary button style matching your language */
 .primary-button {
-  border: 0;
+  width: 12rem;
+  height: 3rem;
+  border: 1px solid transparent;
   background: var(--fg-primary);
   color: #fff;
   font-weight: 900;
-  padding: 0.75rem 1.1rem;
   border-radius: 9999px;
   cursor: pointer;
+  box-shadow: var(--fg-shadow);
+  transition:
+    border-radius 0ms linear,
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease;
+}
+.primary-button:hover:not(:disabled) {
+  border-radius: 1rem;
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  box-shadow: var(--fg-shadow);
 }
 .primary-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
+}
 
+/* Ghost button with inversion hover */
 .ghost-btn {
   border: 1px solid var(--fg-border);
   background: var(--fg-surface);
   color: var(--fg-text);
   font-weight: 900;
-  padding: 0.75rem 1.1rem;
+  width: 14rem;
+  height: 3rem;
   border-radius: 9999px;
   cursor: pointer;
+  box-shadow: var(--fg-shadow);
+  transition:
+    border-radius 0ms linear,
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease;
+}
+.ghost-btn:hover:not(:disabled) {
+  border-radius: 1rem;
+  background: var(--fg-primary);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--fg-shadow);
+}
+.ghost-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
 .ghost-btn:disabled {
   opacity: 0.7;
@@ -552,6 +635,15 @@ onMounted(async () => {
   background: var(--fg-surface-muted);
   border-radius: 1rem;
   padding: 0.9rem;
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 170ms ease,
+    border-color 140ms ease;
+}
+.pref-item:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--fg-primary) 30%, var(--fg-border));
+  box-shadow: 0 14px 24px -18px color-mix(in srgb, var(--fg-primary) 45%, transparent);
 }
 
 .pref-top {
@@ -573,32 +665,26 @@ onMounted(async () => {
   font-size: 0.9rem;
 }
 
-/* Switch borrowed from existing login/register styles */
+/* Switch */
 .switch {
   position: relative;
   display: inline-block;
   width: 44px;
   height: 24px;
 }
-
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
-
 .slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: var(--fg-border);
   transition: 0.2s;
   border-radius: 9999px;
 }
-
 .slider:before {
   position: absolute;
   content: '';
@@ -610,11 +696,9 @@ onMounted(async () => {
   transition: 0.2s;
   border-radius: 50%;
 }
-
 input:checked + .slider {
   background-color: color-mix(in srgb, var(--fg-primary) 70%, var(--fg-border));
 }
-
 input:checked + .slider:before {
   transform: translateX(20px);
 }
@@ -644,6 +728,16 @@ input:checked + .slider:before {
   }
   .actions button {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-card,
+  .pref-item,
+  .header-action,
+  .primary-button,
+  .ghost-btn {
+    transition: none !important;
   }
 }
 </style>
