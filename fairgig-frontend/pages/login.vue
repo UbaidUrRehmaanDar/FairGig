@@ -540,6 +540,66 @@ onMounted(async () => {
   padding: 0 0.25rem;
 }
 
+.switch {
+  position: relative;
+  width: 2.5rem;
+  height: 1.25rem;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.switch .slider {
+  position: absolute;
+  inset: 0;
+  background-color: #d9dde0;
+  border-radius: 9999px;
+  transition: 0.25s ease;
+  pointer-events: none;
+}
+
+.switch .slider::before {
+  content: '';
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  left: 2px;
+  top: 2px;
+  border-radius: 50%;
+  background-color: #fff;
+  transition: 0.25s ease;
+}
+
+.switch input:checked + .slider {
+  background-color: #0545ef;
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(1.25rem);
+}
+
+.switch input:focus-visible + .slider {
+  box-shadow: 0 0 0 3px rgba(5, 69, 239, 0.25);
+}
+
+.remember-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #595c5e;
+  margin: 0;
+  cursor: pointer;
+}
+
+
 .remember-me label {
   font-size: 0.875rem;
   font-weight: 500;
@@ -548,18 +608,6 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 2.5rem;
-  height: 1.25rem;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
 
 .slider {
   position: absolute;
@@ -585,13 +633,6 @@ onMounted(async () => {
   transition: 0.25s ease;
 }
 
-.toggle-switch input:checked + .slider {
-  background-color: #0545ef;
-}
-
-.toggle-switch input:checked + .slider:before {
-  transform: translateX(1.25rem);
-}
 
 .actions {
   padding-top: 1rem;

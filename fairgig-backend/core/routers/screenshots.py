@@ -187,3 +187,65 @@ async def review_screenshot(
         "reviewed_by": user["id"],
         "reviewed_at": reviewed_at,
     }
+
+
+@router.get("/view/{screenshot_id}")
+async def view_screenshot(
+    screenshot_id: str,
+    redirect: bool = True,
+    user=Depends(get_current_user),
+):
+    try:
+        screenshot_uuid = UUID(screenshot_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid screenshot_id format") from exc
+
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        screenshot = await conn.fetchrow(
+            """
+            SELECT id, worker_id, storage_path, status
+            FROM earnings_screenshots
+            WHERE id = $1
+            """,
+            screenshot_uuid,
+        )
+
+    if screenshot is None:
+        raise HTTPException(status_code=404, detail="Screenshot not found")
+
+    is_privileged = user["role"] in {"verifier", "advocate"}
+    is_owner = str(screenshot["worker_id"]) == user["id"]
+    if not is_privileged and not is_owner:
+        raise HTTPException(status_code=403, detail="Cannot view screenshot for another worker")
+
+    storage = _get_storage_client()
+    bucket = _get_bucket_name()
+    expires_in = 60
+
+    try:
+        signed_result = storage.storage.from_(bucket).create_signed_url(
+            screenshot["storage_path"],
+            expires_in,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not generate access link: {exc}") from exc
+
+    signed_url = _extract_signed_url(signed_result)
+    if not signed_url:
+        raise HTTPException(status_code=502, detail="Could not generate access link")
+
+    signed_url = _to_absolute_signed_url(signed_url)
+
+    if redirect:
+        return RedirectResponse(url=signed_url, status_code=307)
+
+    return {
+        "screenshot_id": str(screenshot["id"]),
+        "worker_id": str(screenshot["worker_id"]),
+        "bucket": bucket,
+        "storage_path": screenshot["storage_path"],
+        "signed_url": signed_url,
+        "expires_in": expires_in,
+    }

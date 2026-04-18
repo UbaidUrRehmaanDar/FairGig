@@ -1,5 +1,6 @@
 from datetime import date
-from typing import Optional
+from decimal import Decimal
+from typing import Any, Optional
 
 import os
 
@@ -12,6 +13,18 @@ from auth_middleware import require_role
 from db import get_pool
 
 router = APIRouter()
+
+
+def _to_json(value: Any):
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (date,)):
+        return value.isoformat()
+    return value
+
+
+def _serialize_row(row: asyncpg.Record) -> dict:
+    return {key: _to_json(row[key]) for key in row.keys()}
 
 
 class ShiftIn(BaseModel):

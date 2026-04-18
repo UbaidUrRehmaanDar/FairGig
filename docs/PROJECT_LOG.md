@@ -1,5 +1,36 @@
 # Project Log
 
+## 2026-04-18 - Private Screenshot View Proxy Endpoint
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified.
+- Added secure screenshot viewing endpoint in `fairgig-backend/core/routers/screenshots.py`:
+  - Implemented `GET /screenshots/view/{screenshot_id}` for authenticated access to private bucket files.
+  - Added role/ownership enforcement: workers can view only their own screenshots, while verifier/advocate can view any screenshot.
+  - Endpoint now generates a 60-second signed Supabase Storage URL for private bucket access.
+  - Default behavior redirects (`307`) to the signed URL for direct image rendering.
+  - Added `?redirect=false` option to return JSON payload with signed URL metadata for frontend-controlled navigation.
+
+## 2026-04-18 - Phase 2 Backend Shifts and Screenshots Complete
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified.
+- Implemented full Phase 2 shift endpoints in `fairgig-backend/core/routers/shifts.py`:
+  - `POST /shifts` now inserts into `shifts` and returns persisted shift payload with `shift_id`.
+  - `GET /shifts` now returns only the authenticated worker's shifts.
+  - `GET /shifts/summary` now calculates `this_month`, `this_week`, `avg_hourly`, and `avg_commission_pct` from DB.
+  - `GET /shifts/city-median` now reads from `city_medians` when present and uses a computed fallback when the view is missing.
+- Implemented full Phase 2 screenshot workflow in `fairgig-backend/core/routers/screenshots.py`:
+  - `POST /screenshots/upload/{shift_id}` now validates ownership, uploads to Supabase Storage bucket, creates `earnings_screenshots` row, and marks parent shift `pending`.
+  - `GET /screenshots/pending` now returns the pending moderation queue for `verifier/advocate` roles.
+  - `PATCH /screenshots/{id}/review` now updates screenshot review fields and synchronizes parent shift verification status (`verified` or `disputed`).
+- Added storage configuration default in `fairgig-backend/.env.example`:
+  - Added `SUPABASE_SCREENSHOT_BUCKET=earnings` for explicit bucket selection.
+- Updated Phase tracker in `fairgig-backend/docs/phases.md`:
+  - Marked all Phase 2 checklist items as complete.
+- Completed live end-to-end Phase 2 validation against running API + Supabase DB/Storage:
+  - Shift create/list/summary/city-median passed.
+  - Screenshot upload/pending/review passed.
+  - DB state verification confirmed screenshot status and parent shift status transitions.
+
 ## 2026-04-18 - Phase 1 Backend Foundation Implementation
 - Name: Rehan Abrar
 - Scope locked to backend only; no files under `fairgig-frontend/` were modified.
