@@ -52,12 +52,12 @@
 ## Phase 4 — Anomaly Service
 > Separate FastAPI process on port 8001 — judges will call this directly
 
-- [ ] `POST /anomaly/detect` accepts `{ worker_id, earnings[] }` and returns anomalies
-- [ ] Unusual deduction detection (Z-score > 2.0) working
-- [ ] Income drop detection (>20% shift-on-shift) working
-- [ ] Zero-net anomaly detection working
-- [ ] Each anomaly has: `date`, `type`, `severity`, `value`, `explanation` (plain English)
-- [ ] Tested with judge payload (deduction spike from 20% → 50%)
+- [x] `POST /anomaly/detect` accepts `{ worker_id, earnings[] }` and returns anomalies
+- [x] Unusual deduction detection (Z-score > 2.0) working
+- [x] Income drop detection (>20% shift-on-shift) working
+- [x] Zero-net anomaly detection working
+- [x] Each anomaly has: `date`, `type`, `severity`, `value`, `explanation` (plain English)
+- [x] Tested with judge payload (deduction spike from 20% → 50%)
 
 **✅ Gate: POST judge payload → receive at least 2 anomalies with human-readable explanations.**
 
@@ -77,11 +77,11 @@
 ## Phase 5 — Certificate & Seed Data
 > Printable certificate data endpoint + real data in DB for demo
 
-- [ ] `GET /certificates/data?start_date=&end_date=` returns only **verified** shifts in range
-- [ ] Response includes: worker profile, shifts list, summary totals
-- [ ] Seed script run — 50+ shifts inserted across platforms/zones
-- [ ] `REFRESH MATERIALIZED VIEW city_medians` run after seed
-- [ ] City median endpoint returns non-null values after seed
+- [x] `GET /certificates/data?start_date=&end_date=` returns only **verified** shifts in range
+- [x] Response includes: worker profile, shifts list, summary totals
+- [x] Seed script run — 50+ shifts inserted across platforms/zones
+- [x] `REFRESH MATERIALIZED VIEW city_medians` run after seed
+- [x] City median endpoint returns non-null values after seed
 
 **✅ Gate: GET /certificates/data with a date range returns verified shifts + totals. City median is non-null.**
 
