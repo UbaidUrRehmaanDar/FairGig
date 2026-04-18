@@ -127,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' as any, layout: 'print' })
+definePageMeta({ middleware: 'auth' as any })
 
 import { computed, ref } from 'vue'
 import { useApi } from '../composables/useApi'
@@ -569,7 +569,10 @@ th {
 
 /* print behavior */
 @media print {
-  .no-print {
+  :global(.no-print) {
+    display: none !important;
+  }
+  :global(.iphone-nav) {
     display: none !important;
   }
   .certificate-page {

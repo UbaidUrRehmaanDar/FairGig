@@ -1,5 +1,29 @@
 # Project Log
 
+## 2026-04-18 - Worker Dashboard Weekly Earnings Graph (Frontend)
+- Name: Rehan Abrar
+- Implemented a production-ready, real-data worker earnings graph in `fairgig-frontend/pages/dashboard/worker.vue`.
+- Reworked the worker dashboard top section to match the requested visual direction:
+  - Added a new hero header (`Salam, <name>`) with dynamic user/session-backed context.
+  - Added screenshot-style KPI cards for:
+    - Net (last 30 days)
+    - Effective hourly
+    - Average commission
+    - Verified shifts ratio
+- Built a fully functional SVG chart for `Weekly net earnings` using real shift records from `/shifts`:
+  - Groups net earnings by week across the last 30 days.
+  - Uses computed line + area paths from live data (no static placeholders).
+  - Includes dynamic Y-axis scaling, chart ticks, and date labels.
+  - Includes interactive point focus/hover with tooltip values.
+  - Includes robust empty/loading states for production behavior.
+- Added comparative metric logic for trend and context:
+  - Net trend versus prior 30-day window.
+  - Effective-hourly comparison against city median when available.
+- Added responsive styling refinements for mobile and desktop to keep chart usability and readability across breakpoints.
+- Validation:
+  - Ran workspace diagnostics for `fairgig-frontend/pages/dashboard/worker.vue` and `fairgig-frontend`.
+  - No errors reported.
+
 ## 2026-04-18 - Frontend-Backend Integration Contract Documentation
 - Name: Rehan Abrar
 - Scope locked to backend only; no files under `fairgig-frontend/` were modified.

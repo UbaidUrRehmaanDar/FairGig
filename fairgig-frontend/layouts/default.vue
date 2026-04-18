@@ -3,10 +3,11 @@
     <header v-if="showTopbar" class="topbar no-print">
       <div class="topbar-inner">
         <div class="header-left">
-          <button v-if="canGoBack" @click="goBack" class="back-button mobile-only">
+          <button v-if="canGoBack" @click="goBack" class="back-button">
             <span class="material-symbols-outlined">arrow_back_ios</span>
           </button>
-          <NuxtLink to="/" class="brand">FairGig</NuxtLink>
+          <NuxtLink to="/" class="brand" v-if="!canGoBack">FairGig</NuxtLink>
+          <span class="page-title" v-if="canGoBack">{{ pageTitle || 'FairGig' }}</span>
         </div>
 
         <nav class="nav-links desktop-only">
@@ -47,13 +48,36 @@ const showTopbar = computed(() => {
 })
 
 const canGoBack = computed(() => {
-  const mainRoutes = ['/dashboard/worker', '/dashboard/advocate', '/dashboard/verifier', '/']
+  const mainRoutes = ['/dashboard/worker', '/dashboard/advocate', '/dashboard/verifier', '/login', '/register', '/']
   return !mainRoutes.includes(route.path)
+})
+
+const isMobile = ref(false)
+const updateIsMobile = () => {
+  if (process.client) {
+    isMobile.value = window.innerWidth < 1024
+  }
+}
+
+const pageTitle = computed(() => {
+  const path = route.path
+  if (path.includes('/certificate')) return 'Certificate'
+  if (path.includes('/shifts/log')) return 'Log Shift'
+  if (path.includes('/shifts')) return 'History'
+  if (path.includes('/grievances/new')) return 'New Grievance'
+  if (path.includes('/grievances')) return 'Grievances'
+  if (path.includes('/settings')) return 'Settings'
+  return ''
 })
 
 const goBack = () => {
   router.back()
 }
+
+onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+})
 </script>
 
 <style scoped>
@@ -119,6 +143,13 @@ const goBack = () => {
 .back-button .material-symbols-outlined {
   font-size: 1.25rem;
   font-variation-settings: 'FILL' 1, 'wght' 700;
+}
+
+.page-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--fg-text);
+  margin-left: 0.25rem;
 }
 
 .nav-links {

@@ -385,6 +385,8 @@ await load()
   }
   .page-header {
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: 0.9rem;
   }
   .header-action {

@@ -134,13 +134,13 @@ select:has(option:checked[disabled][value='']) {
 }
 
 /* Global Responsive Helpers */
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .desktop-only {
     display: none !important;
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
   .mobile-only {
     display: none !important;
   }

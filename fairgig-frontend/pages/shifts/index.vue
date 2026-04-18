@@ -428,6 +428,8 @@ tbody tr:hover {
 
   .page-header {
     flex-direction: column;
+    align-items: center; /* Center items on mobile */
+    text-align: center;
     gap: 0.9rem;
   }
 
