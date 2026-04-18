@@ -3,6 +3,18 @@ export const useApi = () => {
   const supabase = useSupabaseClient()
   const apiBase = String(config.public.apiBase || "http://127.0.0.1:8000").replace(/\/$/, "")
 
+  const buildCandidateBases = (primary: string) => {
+    const bases = [primary]
+
+    if (primary.includes('127.0.0.1')) {
+      bases.push(primary.replace('127.0.0.1', 'localhost'))
+    } else if (primary.includes('localhost')) {
+      bases.push(primary.replace('localhost', '127.0.0.1'))
+    }
+
+    return Array.from(new Set(bases))
+  }
+
   type JsonLike = Record<string, any> | any[]
   type AuthFetchOptions = Omit<RequestInit, "body"> & {
     body?: RequestInit["body"] | JsonLike
@@ -35,15 +47,33 @@ export const useApi = () => {
     }
 
     const normalizedPath = path.startsWith("/") ? path : `/${path}`
-    let response: Response
-    try {
-      response = await fetch(`${apiBase}${normalizedPath}`, {
-        ...options,
-        body,
-        headers,
-      })
-    } catch {
-      throw new Error(`Cannot reach API at ${apiBase}. Ensure backend is running.`)
+    const candidateBases = buildCandidateBases(apiBase)
+
+    let response: Response | null = null
+    let lastNetworkError: unknown = null
+
+    for (const base of candidateBases) {
+      try {
+        response = await fetch(`${base}${normalizedPath}`, {
+          ...options,
+          body,
+          headers,
+        })
+        break
+      } catch (error) {
+        lastNetworkError = error
+      }
+    }
+
+    if (!response) {
+      const attempted = candidateBases.join(', ')
+      const detail =
+        lastNetworkError && typeof lastNetworkError === 'object' && 'message' in lastNetworkError
+          ? String((lastNetworkError as any).message || '')
+          : ''
+      throw new Error(
+        `Cannot reach API at ${attempted}. Ensure backend is running.${detail ? ` (${detail})` : ''}`
+      )
     }
 
     const contentType = response.headers.get("content-type") || ""

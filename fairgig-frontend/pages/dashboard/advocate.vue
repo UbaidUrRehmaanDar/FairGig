@@ -189,13 +189,16 @@ await loadKpis()
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
+  overflow-x: clip;
 }
 
 .dashboard-main {
+  width: 100%;
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .page-header {
@@ -271,6 +274,8 @@ await loadKpis()
   border-radius: 1.25rem;
   padding: 1.25rem;
   box-shadow: var(--fg-shadow);
+  min-width: 0;
+  overflow: hidden;
 }
 .panel-header h2 {
   font-size: 1.15rem;
@@ -328,6 +333,8 @@ await loadKpis()
   overflow-x: auto;
   border-radius: 1rem;
   border: 1px solid var(--fg-border);
+  width: 100%;
+  min-width: 0;
 }
 table {
   width: 100%;
@@ -400,6 +407,7 @@ th {
   border-radius: 1rem;
   padding: 0.75rem 1rem;
   background: var(--fg-surface-muted);
+  min-width: 0;
 }
 .complaint-row .platform {
   font-weight: 800;
@@ -410,6 +418,7 @@ th {
   font-size: 0.86rem;
   font-weight: 700;
   flex: 1;
+  min-width: 0;
 }
 .complaint-row .count {
   background: var(--fg-surface);
@@ -419,7 +428,9 @@ th {
   font-size: 0.75rem;
   font-weight: 800;
   color: var(--fg-primary);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .support-fab {
@@ -478,8 +489,8 @@ th {
     gap: 0.35rem;
   }
   .complaint-row .count {
-    align-self: flex-end;
-    margin-top: -1.5rem;
+    align-self: stretch;
+    margin-top: 0.25rem;
   }
 }
 </style>

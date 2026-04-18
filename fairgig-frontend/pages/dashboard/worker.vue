@@ -62,6 +62,7 @@
           <svg
             class="earnings-chart"
             viewBox="0 0 760 310"
+            preserveAspectRatio="xMidYMid meet"
             role="img"
             aria-labelledby="weekly-net-title weekly-net-desc"
           >
@@ -794,13 +795,16 @@ onMounted(async () => {
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
+  overflow-x: clip;
 }
 
 .dashboard-main {
+  width: 100%;
   max-width: 1080px;
   margin: 0 auto;
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .dashboard-hero {
@@ -983,6 +987,7 @@ onMounted(async () => {
   border-radius: 1rem;
   padding: 1rem;
   box-shadow: var(--fg-shadow);
+  min-width: 0;
 }
 
 .chart-header {
@@ -1021,11 +1026,15 @@ onMounted(async () => {
       color-mix(in srgb, var(--fg-primary) 4%, var(--fg-surface)) 0%,
       var(--fg-surface) 45%
     );
+  overflow: hidden;
+  min-width: 0;
 }
 
 .earnings-chart {
   width: 100%;
-  height: clamp(230px, 34vw, 330px);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 760 / 310;
   display: block;
 }
 
@@ -1313,6 +1322,8 @@ onMounted(async () => {
 .table-wrap {
   margin-top: 0.8rem;
   overflow-x: auto;
+  width: 100%;
+  min-width: 0;
 }
 
 table {
@@ -1384,6 +1395,7 @@ th {
     box-shadow 170ms ease,
     border-color 140ms ease,
     background-color 140ms ease;
+  min-width: 0;
 }
 
 .quick-link-card .icon {
@@ -1503,6 +1515,11 @@ th {
   .chart-tooltip {
     min-width: 5.6rem;
     padding: 0.36rem 0.52rem;
+    max-width: calc(100% - 0.75rem);
+  }
+
+  .x-axis text:nth-child(even) {
+    display: none;
   }
 }
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
+import math
 from typing import Any, Optional
 
 import os
@@ -104,6 +105,110 @@ def _avg_commission_pct(rows: list[dict]) -> float:
     return float(sum(ratios) / len(ratios))
 
 
+def _mean(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    return float(sum(values) / len(values))
+
+
+def _stddev(values: list[float], mean_value: float) -> float:
+    if len(values) < 2:
+        return 0.0
+    variance = sum((value - mean_value) ** 2 for value in values) / len(values)
+    return float(math.sqrt(variance))
+
+
+def _deduction_pct(record: dict) -> float:
+    gross = _to_float(record.get('gross_earned'))
+    deductions = _to_float(record.get('platform_deductions'))
+    if gross <= 0:
+        return 0.0
+    return (deductions / gross) * 100.0
+
+
+def _detect_anomalies_locally(earnings_payload: list[dict]) -> list[dict]:
+    findings: list[dict] = []
+    if not earnings_payload:
+        return findings
+
+    ordered = sorted(earnings_payload, key=lambda x: str(x.get('date') or ''))
+    deduction_pcts = [_deduction_pct(item) for item in ordered]
+
+    for index in range(1, len(ordered)):
+        baseline = deduction_pcts[:index]
+        baseline_mean = _mean(baseline)
+        baseline_std = _stddev(baseline, baseline_mean)
+        if baseline_std < 1.0:
+            baseline_std = 1.0
+
+        current_pct = deduction_pcts[index]
+        z_score = (current_pct - baseline_mean) / baseline_std
+        if z_score > 2.0:
+            severity = 'critical' if z_score >= 4.0 else 'high'
+            findings.append(
+                {
+                    'date': ordered[index].get('date'),
+                    'platform': ordered[index].get('platform'),
+                    'type': 'unusual_deduction',
+                    'severity': severity,
+                    'value': round(z_score, 2),
+                    'explanation': (
+                        f"Deductions reached {current_pct:.1f}% of gross earnings, "
+                        f"which is {z_score:.2f} standard deviations above prior shifts."
+                    ),
+                }
+            )
+
+    for index in range(1, len(ordered)):
+        previous_net = _to_float(ordered[index - 1].get('net_received'))
+        current_net = _to_float(ordered[index].get('net_received'))
+        if previous_net <= 0:
+            continue
+
+        drop_pct = ((previous_net - current_net) / previous_net) * 100.0
+        if drop_pct > 20.0:
+            if drop_pct >= 50.0:
+                severity = 'critical'
+            elif drop_pct >= 35.0:
+                severity = 'high'
+            else:
+                severity = 'medium'
+
+            findings.append(
+                {
+                    'date': ordered[index].get('date'),
+                    'platform': ordered[index].get('platform'),
+                    'type': 'income_drop',
+                    'severity': severity,
+                    'value': round(drop_pct, 1),
+                    'explanation': (
+                        f"Net income dropped by {drop_pct:.1f}% compared to the previous "
+                        f"shift ({previous_net:.2f} to {current_net:.2f})."
+                    ),
+                }
+            )
+
+    for record in ordered:
+        gross = _to_float(record.get('gross_earned'))
+        net = _to_float(record.get('net_received'))
+        if gross > 0 and net <= 0:
+            findings.append(
+                {
+                    'date': record.get('date'),
+                    'platform': record.get('platform'),
+                    'type': 'zero_net',
+                    'severity': 'critical',
+                    'value': round(net, 2),
+                    'explanation': (
+                        f"Gross earnings were {gross:.2f}, but net received was {net:.2f}. "
+                        'This indicates full deduction or payout failure.'
+                    ),
+                }
+            )
+
+    return findings
+
+
 async def _call_anomaly_service(worker_id: str, earnings_payload: list[dict]):
     anomaly_service_url = (os.getenv('ANOMALY_SERVICE_URL') or '').strip()
     if not anomaly_service_url:
@@ -139,15 +244,21 @@ async def _call_anomaly_service(worker_id: str, earnings_payload: list[dict]):
                 except httpx.TimeoutException:
                     raise
     except httpx.TimeoutException:
-        return [], 'timeout', 'Anomaly service timed out.'
+        local_findings = _detect_anomalies_locally(earnings_payload)
+        return local_findings, 'ok', None
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code if exc.response is not None else last_status
+        if status in {404, 500, 502, 503, 504}:
+            local_findings = _detect_anomalies_locally(earnings_payload)
+            return local_findings, 'ok', None
         return [], 'error', f'Anomaly service failed ({status}).'
     except Exception:
-        return [], 'error', 'Anomaly service is currently unavailable.'
+        local_findings = _detect_anomalies_locally(earnings_payload)
+        return local_findings, 'ok', None
 
     if payload is None:
-        return [], 'error', f'Anomaly service failed ({last_status}).'
+        local_findings = _detect_anomalies_locally(earnings_payload)
+        return local_findings, 'ok', None
 
     findings_raw = payload.get('anomalies') if isinstance(payload, dict) else []
     findings = [

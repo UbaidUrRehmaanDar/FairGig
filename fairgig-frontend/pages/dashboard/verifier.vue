@@ -388,13 +388,16 @@ onMounted(async () => {
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
+  overflow-x: clip;
 }
 
 .verify-shell {
+  width: 100%;
   max-width: 1140px;
   margin: 0 auto;
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .verify-header {
@@ -517,6 +520,7 @@ onMounted(async () => {
   box-shadow: var(--fg-shadow);
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .verify-card-top {
@@ -561,6 +565,7 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 1rem;
+  min-width: 0;
 }
 
 .details-column {
@@ -652,6 +657,7 @@ textarea:focus {
   min-height: 100%;
   overflow: hidden;
   display: grid;
+  min-width: 0;
 }
 
 .preview-frame img {
@@ -791,7 +797,7 @@ textarea:focus {
   .verify-card-actions .action-btn {
     flex: 1;
     justify-content: center;
-    min-width: 170px;
+    min-width: 0;
   }
 }
 </style>
