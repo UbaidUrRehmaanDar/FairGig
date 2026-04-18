@@ -127,17 +127,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import type { User } from '@supabase/supabase-js'
 import { navigateTo } from 'nuxt/app'
-import { useAuthStore } from '../stores/auth'
+import { useSupabaseClient } from '#imports'
+
+const supabase = useSupabaseClient()
 
 const email = ref('')
 const password = ref('')
 const rememberDevice = ref(false)
 const isLoggingIn = ref(false)
 const showPassword = ref(false)
-
-const authStore = useAuthStore()
 
 const errors = ref<{ email: string; password: string }>({
   email: '',
@@ -172,21 +173,50 @@ const resolveTargetByRole = (role: string) => {
   return '/dashboard/worker'
 }
 
+const resolveRole = (user: User | null) => {
+  const roleCandidate =
+    (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
+    (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
+    'worker'
+
+  return String(roleCandidate).toLowerCase().trim()
+}
+
 const handleLogin = async () => {
   if (isLoggingIn.value) return
   if (!validateForm()) return
 
   isLoggingIn.value = true
   try {
-    // Placeholder store; real auth will set user/role later.
-    await authStore.signIn()
-    await navigateTo(resolveTargetByRole(authStore.role))
-  } catch {
-    errors.value.password = 'Login failed. Please check your credentials and try again.'
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.value,
+      password: password.value
+    })
+
+    if (error) {
+      errors.value.password = error.message || 'Login failed. Please check your credentials.'
+      return
+    }
+
+    const role = resolveRole(data.user)
+    await navigateTo(resolveTargetByRole(role))
+    if (!rememberDevice.value) {
+      // Session persistence is controlled by the Supabase client configuration.
+      // Keeping this toggle for UX, but it won't change persistence without client config.
+    }
+  } catch (e: any) {
+    errors.value.password = e?.message || 'Login failed. Please check your credentials.'
   } finally {
     isLoggingIn.value = false
   }
 }
+
+onMounted(async () => {
+  const { data } = await supabase.auth.getSession()
+  if (data.session?.user) {
+    await navigateTo(resolveTargetByRole(resolveRole(data.session.user)))
+  }
+})
 </script>
 
 <style scoped>

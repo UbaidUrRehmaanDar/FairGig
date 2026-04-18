@@ -159,7 +159,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useShiftsStore } from '../../stores/shifts'
 
 const shiftsStore = useShiftsStore()
-
 const shifts = ref<any[]>([])
 const summary = ref<any>(null)
 const cityMedian = ref<any>(null)

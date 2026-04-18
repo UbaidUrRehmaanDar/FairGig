@@ -788,42 +788,55 @@ terms-label {
 }
 
 .actions {
-  margin-top: 1.5rem;
+  padding-top: 1rem;
   display: flex;
   justify-content: center;
 }
 
 .primary-button {
-  padding: 1rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #ffffff;
-  background-color: #0545ef;
-  border: none;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition:
-    background-color 0.2s,
-    box-shadow 0.2s,
-    border-radius 0.3s ease;
-  display: flex;
+  width: 18rem;
+  height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-}
-
-.primary-button:hover {
-  background-color: #0031a7;
-  box-shadow: 0 4px 12px rgba(5, 69, 239, 0.15);
-  border-radius: 1rem;
-}
-
-.primary-button.is-loading {
-  background-color: #859aff;
+  background-color: #0545ef;
+  color: #f2f1ff;
+  border: none;
   border-radius: 9999px;
-  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    width 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms linear,
+    box-shadow 140ms ease;
+  box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
 }
 
+.primary-button:not(:disabled):hover {
+  width: 20.5rem;
+  height: 2.9rem;
+  border-radius: 1rem;
+  background-color: #003bd4;
+  box-shadow: 0 16px 28px -10px rgba(5, 69, 239, 0.35);
+}
+
+.primary-button:not(:disabled):active {
+  background-color: #0033bb;
+}
+
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(5, 69, 239, 0.25),
+    0 16px 28px -10px rgba(5, 69, 239, 0.35);
+}
+
+.primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
   width: 18rem;

@@ -10,7 +10,7 @@ export const useShiftsStore = () => {
     async fetchSummary() {
       return null
     },
-    async logShift() {
+    async logShift(_payload?: any) {
       return { shift_id: "skeleton-shift-id", status: "logged" }
     },
     async fetchCityMedian() {

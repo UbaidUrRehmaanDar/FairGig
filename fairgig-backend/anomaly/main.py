@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -51,15 +51,31 @@ class DetectRequest(BaseModel):
     earnings: List[EarningsRecord]
 
 
-@app.post("/detect")
-async def detect(req: DetectRequest):
-    anomalies = detect_anomalies([record.dict() for record in req.earnings])
+def _to_dict(model: BaseModel) -> Dict[str, Any]:
+    if hasattr(model, "model_dump"):
+        return model.model_dump()
+    return model.dict()
+
+
+def _build_detect_response(req: DetectRequest) -> Dict[str, Any]:
+    earnings_payload = [_to_dict(record) for record in req.earnings]
+    anomalies = detect_anomalies(earnings_payload)
     return {
         "worker_id": req.worker_id,
         "records_analyzed": len(req.earnings),
         "anomalies_found": len(anomalies),
         "anomalies": anomalies,
     }
+
+
+@app.post("/anomaly/detect")
+async def detect(req: DetectRequest):
+    return _build_detect_response(req)
+
+
+@app.post("/detect")
+async def detect_legacy(req: DetectRequest):
+    return _build_detect_response(req)
 
 
 @app.get("/health")
