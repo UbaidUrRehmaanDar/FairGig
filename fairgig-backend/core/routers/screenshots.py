@@ -1,21 +1,25 @@
 import os
-from datetime import date, datetime
-from decimal import Decimal
-from pathlib import Path
-from typing import Any, Literal
-from uuid import UUID, uuid4
+from datetime import datetime
+from typing import Literal, Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from supabase import create_client
+from supabase import Client, create_client
 
-from auth_middleware import get_current_user, require_role
+from auth_middleware import require_role
 from db import get_pool
 
 router = APIRouter()
 
-_supabase_client = None
+ALLOWED_REVIEW_STATUS = {"verified", "flagged", "unverifiable"}
+SHIFT_STATUS_BY_SCREENSHOT_STATUS = {
+    "verified": "verified",
+    "flagged": "disputed",
+    "unverifiable": "unverified",
+}
+
+_supabase_client: Optional[Client] = None
 
 
 class ScreenshotReviewIn(BaseModel):
@@ -23,73 +27,18 @@ class ScreenshotReviewIn(BaseModel):
     note: str = ""
 
 
-def _to_json(value: Any):
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    return value
-
-
-def _serialize_row(row):
-    return {key: _to_json(row[key]) for key in row.keys()}
-
-
-def _get_bucket_name() -> str:
-    return (os.getenv("SUPABASE_SCREENSHOT_BUCKET") or "earnings").strip() or "earnings"
-
-
-def _get_storage_client():
+def get_supabase_client() -> Client:
     global _supabase_client
-
-    if _supabase_client is not None:
-        return _supabase_client
-
-    supabase_url = (os.getenv("SUPABASE_URL") or "").strip()
-    service_key = (os.getenv("SUPABASE_SERVICE_KEY") or "").strip()
-
-    if not supabase_url or not service_key:
-        raise HTTPException(status_code=500, detail="Supabase storage is not configured")
-
-    _supabase_client = create_client(supabase_url, service_key)
+    if _supabase_client is None:
+        supabase_url = (os.getenv("SUPABASE_URL") or "").strip()
+        service_key = (os.getenv("SUPABASE_SERVICE_KEY") or "").strip()
+        if not supabase_url or not service_key:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase storage is not configured",
+            )
+        _supabase_client = create_client(supabase_url, service_key)
     return _supabase_client
-
-
-def _extract_signed_url(value: Any) -> str | None:
-    if isinstance(value, str):
-        return value
-
-    if isinstance(value, dict):
-        return value.get("signedURL") or value.get("signedUrl")
-
-    data = getattr(value, "data", None)
-    if isinstance(data, dict):
-        return data.get("signedURL") or data.get("signedUrl")
-
-    return None
-
-
-def _to_absolute_signed_url(url: str) -> str:
-    if url.startswith("http://") or url.startswith("https://"):
-        return url
-
-    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
-    if url.startswith("/") and supabase_url:
-        return f"{supabase_url}/storage/v1{url}"
-
-    return url
-
-
-async def _ensure_profile_exists(conn, user_id: str, role: str):
-    await conn.execute(
-        """
-        INSERT INTO profiles (id, role)
-        VALUES ($1, $2)
-        ON CONFLICT (id) DO NOTHING
-        """,
-        user_id,
-        role,
-    )
 
 
 @router.post("/upload/{shift_id}")
@@ -101,86 +50,60 @@ async def upload_screenshot(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File is required")
 
-    try:
-        shift_uuid = UUID(shift_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid shift_id format") from exc
+    pool = await get_pool()
+    shift = await pool.fetchrow(
+        "SELECT id FROM shifts WHERE id = $1 AND worker_id = $2",
+        shift_id,
+        user["id"],
+    )
+    if shift is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Shift not found for this worker",
+        )
 
-    file_bytes = await file.read()
-    if not file_bytes:
+    content = await file.read()
+    if not content:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
-    pool = await get_pool()
+    extension = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+    storage_path = f"screenshots/{user['id']}/{shift_id}/{uuid4()}.{extension}"
 
-    async with pool.acquire() as conn:
-        shift = await conn.fetchrow(
-            """
-            SELECT id, worker_id
-            FROM shifts
-            WHERE id = $1
-            """,
-            shift_uuid,
-        )
-
-        if shift is None:
-            raise HTTPException(status_code=404, detail="Shift not found")
-
-        if str(shift["worker_id"]) != user["id"]:
-            raise HTTPException(status_code=403, detail="Cannot upload screenshot for another worker")
-
-    suffix = Path(file.filename).suffix
-    object_path = f"{user['id']}/{shift_uuid}/{uuid4().hex}{suffix}"
-    bucket = _get_bucket_name()
-
-    storage = _get_storage_client()
+    storage = get_supabase_client().storage.from_("earnings")
     try:
-        storage.storage.from_(bucket).upload(
-            object_path,
-            file_bytes,
-            {
-                "content-type": file.content_type or "application/octet-stream",
-                "upsert": "false",
-            },
+        storage.upload(
+            storage_path,
+            content,
+            {"content-type": file.content_type or "application/octet-stream"},
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Storage upload failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail="Failed to upload to storage") from exc
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            row = await conn.fetchrow(
-                """
-                INSERT INTO earnings_screenshots (
-                    shift_id,
-                    worker_id,
-                    storage_path,
-                    status
-                )
-                VALUES ($1, $2, $3, 'pending')
-                RETURNING id, shift_id, worker_id, storage_path, status, created_at
-                """,
-                shift_uuid,
-                user["id"],
-                object_path,
-            )
+    screenshot = await pool.fetchrow(
+        """
+        INSERT INTO earnings_screenshots (shift_id, worker_id, storage_path, status)
+        VALUES ($1, $2, $3, 'pending')
+        RETURNING id, status, created_at
+        """,
+        shift_id,
+        user["id"],
+        storage_path,
+    )
 
-            await conn.execute(
-                """
-                UPDATE shifts
-                SET verification_status = 'pending'
-                WHERE id = $1
-                """,
-                shift_uuid,
-            )
+    await pool.execute(
+        "UPDATE shifts SET verification_status = 'pending' WHERE id = $1",
+        shift_id,
+    )
 
     return {
         "status": "uploaded",
-        "screenshot_id": str(row["id"]),
-        "shift_id": str(row["shift_id"]),
-        "storage_path": row["storage_path"],
-        "worker_id": str(row["worker_id"]),
-        "review_status": row["status"],
-        "created_at": _to_json(row["created_at"]),
-        "bucket": bucket,
+        "screenshot_id": str(screenshot["id"]),
+        "shift_id": shift_id,
+        "storage_path": storage_path,
+        "review_status": screenshot["status"],
+        "created_at": screenshot["created_at"],
+        "filename": file.filename,
+        "worker_id": user["id"],
     }
 
 
@@ -199,10 +122,7 @@ async def pending_screenshots(user=Depends(require_role("verifier", "advocate"))
             es.created_at,
             s.platform,
             s.shift_date,
-            s.gross_earned,
-            s.platform_deductions,
             s.net_received,
-            s.verification_status,
             p.full_name,
             p.city_zone
         FROM earnings_screenshots es
@@ -210,83 +130,62 @@ async def pending_screenshots(user=Depends(require_role("verifier", "advocate"))
         LEFT JOIN profiles p ON p.id = es.worker_id
         WHERE es.status = 'pending'
         ORDER BY es.created_at ASC
+        LIMIT 100
         """
     )
 
-    items = [_serialize_row(row) for row in rows]
-    return {"items": items, "count": len(items)}
+    return [dict(row) for row in rows]
 
 
 @router.patch("/{screenshot_id}/review")
 async def review_screenshot(
     screenshot_id: str,
-    payload: ScreenshotReviewIn,
+    review: ScreenshotReviewIn,
     user=Depends(require_role("verifier", "advocate")),
 ):
-    try:
-        screenshot_uuid = UUID(screenshot_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid screenshot_id format") from exc
+    if review.status not in ALLOWED_REVIEW_STATUS:
+        raise HTTPException(status_code=400, detail="Invalid status")
 
     pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT id, shift_id FROM earnings_screenshots WHERE id = $1",
+        screenshot_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Screenshot not found")
 
-    shift_status = "verified" if payload.status == "verified" else "disputed"
+    reviewed_at = datetime.utcnow()
+    await pool.execute(
+        """
+        UPDATE earnings_screenshots
+        SET
+            status = $1,
+            verifier_note = $2,
+            verifier_id = $3,
+            reviewed_at = $4
+        WHERE id = $5
+        """,
+        review.status,
+        review.note,
+        user["id"],
+        reviewed_at,
+        screenshot_id,
+    )
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await _ensure_profile_exists(conn, user["id"], user["role"])
-
-            screenshot = await conn.fetchrow(
-                """
-                SELECT id, shift_id
-                FROM earnings_screenshots
-                WHERE id = $1
-                """,
-                screenshot_uuid,
-            )
-
-            if screenshot is None:
-                raise HTTPException(status_code=404, detail="Screenshot not found")
-
-            updated = await conn.fetchrow(
-                """
-                UPDATE earnings_screenshots
-                SET
-                    status = $2,
-                    verifier_id = $3,
-                    verifier_note = $4,
-                    reviewed_at = NOW()
-                WHERE id = $1
-                RETURNING
-                    id,
-                    shift_id,
-                    worker_id,
-                    status,
-                    verifier_id,
-                    verifier_note,
-                    reviewed_at
-                """,
-                screenshot_uuid,
-                payload.status,
-                user["id"],
-                payload.note,
-            )
-
-            await conn.execute(
-                """
-                UPDATE shifts
-                SET verification_status = $2
-                WHERE id = $1
-                """,
-                screenshot["shift_id"],
-                shift_status,
-            )
+    await pool.execute(
+        "UPDATE shifts SET verification_status = $1 WHERE id = $2",
+        SHIFT_STATUS_BY_SCREENSHOT_STATUS[review.status],
+        row["shift_id"],
+    )
 
     return {
         "status": "updated",
-        "screenshot": _serialize_row(updated),
-        "shift_verification_status": shift_status,
+        "screenshot_id": screenshot_id,
+        "shift_id": str(row["shift_id"]),
+        "review_status": review.status,
+        "note": review.note,
         "reviewed_by": user["id"],
+        "reviewed_at": reviewed_at,
     }
 
 

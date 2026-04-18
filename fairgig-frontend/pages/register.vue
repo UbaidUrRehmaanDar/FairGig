@@ -146,6 +146,8 @@
 </div>
 <p v-if="errors.terms" class="field-error terms-error">{{ errors.terms }}</p>
 
+          <p v-if="statusMessage" :class="['form-message', statusType]">{{ statusMessage }}</p>
+
           <div class="actions">
             <button
               type="submit"
@@ -174,7 +176,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { navigateTo } from 'nuxt/app'
+import { useSupabaseClient } from '#imports'
+
+const supabase = useSupabaseClient()
 
 const fullName = ref('')
 const email = ref('')
@@ -185,6 +191,8 @@ const acceptedTerms = ref(false)
 const isRegistering = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const statusMessage = ref('')
+const statusType = ref<'error' | 'success'>('error')
 
 const errors = ref<{
   fullName: string
@@ -199,8 +207,6 @@ const errors = ref<{
   confirmPassword: '',
   terms: ''
 })
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
@@ -253,19 +259,109 @@ const validateForm = () => {
   )
 }
 
+const isRateLimitError = (error: any) => {
+  const status = Number(error?.status || 0)
+  const message = String(error?.message || '').toLowerCase()
+  const code = String(error?.code || '').toLowerCase()
+
+  return (
+    status === 429 ||
+    message.includes('rate limit') ||
+    message.includes('too many requests') ||
+    code.includes('rate_limit') ||
+    code.includes('over_email_send_rate_limit')
+  )
+}
+
+const isAlreadyRegisteredError = (error: any) => {
+  const message = String(error?.message || '').toLowerCase()
+  const code = String(error?.code || '').toLowerCase()
+
+  return (
+    (message.includes('already') && message.includes('registered')) ||
+    code.includes('email_exists') ||
+    code.includes('user_already_exists')
+  )
+}
+
 const handleRegister = async () => {
   if (isRegistering.value) return
 
+  statusMessage.value = ''
   if (!validateForm()) return
 
   isRegistering.value = true
   try {
-    await sleep(1200)
-    // TODO: integrate real registration API here
+    const { data, error } = await supabase.auth.signUp({
+      email: email.value.toLowerCase(),
+      password: password.value,
+      options: {
+        data: {
+          full_name: fullName.value,
+          role: 'worker'
+        },
+        emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/confirm` : undefined
+      }
+    })
+
+    if (error) {
+      if (isRateLimitError(error) || isAlreadyRegisteredError(error)) {
+        // If signup is rate-limited but account already exists, try signing in directly.
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.value.toLowerCase(),
+          password: password.value
+        })
+
+        if (!signInError && signInData.user) {
+          statusType.value = 'success'
+          statusMessage.value = 'Account already exists. Signed in successfully.'
+          await navigateTo('/dashboard/worker')
+          return
+        }
+
+        const signInMessage = String(signInError?.message || '').toLowerCase()
+        if (signInMessage.includes('email not confirmed')) {
+          statusType.value = 'error'
+          statusMessage.value =
+            'Your account exists but is not confirmed yet. Check your inbox and try logging in after confirmation.'
+          return
+        }
+
+        statusType.value = 'error'
+        statusMessage.value =
+          'Email sending is temporarily rate-limited. Wait a minute and try again, or use Log in if your account already exists.'
+        return
+      }
+
+      statusType.value = 'error'
+      statusMessage.value = error.message || 'Registration failed. Please try again.'
+      return
+    }
+
+    statusType.value = 'success'
+
+    if (data.session?.user) {
+      statusMessage.value = 'Account created successfully.'
+      await navigateTo('/dashboard/worker')
+      return
+    }
+
+    statusMessage.value = 'Account created. Check your email to confirm, then sign in.'
+    await navigateTo('/confirm')
+  } catch (error: any) {
+    statusType.value = 'error'
+    statusMessage.value = error?.message || 'Registration failed. Please try again.'
   } finally {
     isRegistering.value = false
   }
 }
+
+onMounted(async () => {
+  const { data } = await supabase.auth.getSession()
+  if (data.session?.user) {
+    await navigateTo('/dashboard/worker')
+  }
+})
 </script>
 
 <style scoped>
@@ -528,6 +624,22 @@ const handleRegister = async () => {
   line-height: 1.2;
 }
 
+.form-message {
+  margin-top: -0.25rem;
+  margin-left: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.form-message.error {
+  color: #d92d20;
+}
+
+.form-message.success {
+  color: #0b7a33;
+}
+
 .terms-row {
   display: flex;
   align-items: flex-start;
@@ -595,6 +707,28 @@ const handleRegister = async () => {
   line-height: 1.35;
   cursor: pointer;
   margin: 0;
+}
+
+terms-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #595c5e;
+  line-height: 1.35;
+  cursor: pointer;
+  margin: 0;
+}
+
+.terms-label a {
+  color: #0545ef;
+  font-weight: 700;
+  text-decoration: none;
+}
+.terms-label a:hover {
+  text-decoration: underline;
+}
+
+.terms-error {
+  margin-top: -0.5rem;
 }
 
 .terms-row a {
