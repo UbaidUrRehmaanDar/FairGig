@@ -166,8 +166,8 @@ onMounted(async () => {
 <style scoped>
 .shifts-history-page {
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   padding: 2rem;
 }
@@ -190,11 +190,11 @@ onMounted(async () => {
 }
 .page-header p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 .header-action {
   text-decoration: none;
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   border-radius: 9999px;
   padding: 0.7rem 1rem;
@@ -204,10 +204,11 @@ onMounted(async () => {
 
 .filters-card,
 .table-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 
 .filters-grid {
@@ -223,7 +224,7 @@ onMounted(async () => {
 .input-group label {
   font-size: 0.84rem;
   font-weight: 700;
-  color: #595c5e;
+  color: var(--fg-muted);
   margin-left: 0.2rem;
 }
 .input-with-icon {
@@ -234,7 +235,7 @@ onMounted(async () => {
 .input-with-icon .icon {
   position: absolute;
   left: 0.85rem;
-  color: #abadaf;
+  color: var(--fg-muted);
   font-size: 1.2rem;
   pointer-events: none;
 }
@@ -243,16 +244,16 @@ onMounted(async () => {
   width: 100%;
   border: none;
   border-radius: 1rem;
-  background: #eef1f3;
-  color: #2c2f31;
+  background: var(--fg-surface-muted);
+  color: var(--fg-text);
   outline: none;
   font-family: inherit;
   padding: 0.88rem 1rem 0.88rem 2.7rem;
 }
 .input-with-icon input:focus,
 .input-with-icon select:focus {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px rgba(5, 69, 239, 0.2);
+  background: var(--fg-surface);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
 
 .table-header {
@@ -265,7 +266,7 @@ onMounted(async () => {
   font-weight: 800;
 }
 .count-pill {
-  background: #eef1f3;
+  background: var(--fg-surface-muted);
   border-radius: 9999px;
   padding: 0.3rem 0.65rem;
   font-size: 0.76rem;
@@ -273,7 +274,7 @@ onMounted(async () => {
 }
 .table-state {
   margin-top: 0.75rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .table-wrap {
@@ -288,12 +289,12 @@ table {
 th,
 td {
   text-align: left;
-  border-bottom: 1px solid #eef1f3;
+  border-bottom: 1px solid var(--fg-border);
   padding: 0.72rem 0.45rem;
   font-size: 0.86rem;
 }
 th {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-weight: 700;
 }
 .note-cell {
@@ -313,8 +314,8 @@ th {
   text-transform: capitalize;
 }
 .status-pill.verified {
-  background: #e7f8ef;
-  color: #0b7a33;
+  background: color-mix(in srgb, var(--fg-success) 14%, var(--fg-surface));
+  color: var(--fg-success);
 }
 .status-pill.pending {
   background: #fff6df;
@@ -325,8 +326,8 @@ th {
   color: #8a1f1f;
 }
 .status-pill.unverified {
-  background: #eef1f3;
-  color: #595c5e;
+  background: var(--fg-surface-muted);
+  color: var(--fg-muted);
 }
 
 .support-fab {
@@ -338,11 +339,11 @@ th {
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  border: none;
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
-  background: #fff;
-  color: #0545ef;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  box-shadow: var(--fg-shadow);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -138,8 +138,8 @@ onMounted(async () => {
 .auth-index {
   display: flex;
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   overflow: hidden;
 }
@@ -218,7 +218,7 @@ onMounted(async () => {
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #0545ef;
+  color: var(--fg-primary);
 }
 
 .header {
@@ -234,7 +234,7 @@ onMounted(async () => {
 
 .header p {
   margin-top: 0.5rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .status-chip {
@@ -243,8 +243,9 @@ onMounted(async () => {
   gap: 0.65rem;
   padding: 0.95rem 1rem;
   border-radius: 1rem;
-  background: #eef1f3;
-  color: #595c5e;
+  background: var(--fg-surface);
+  color: var(--fg-muted);
+  border: 1px solid var(--fg-border);
   font-weight: 600;
 }
 
@@ -263,24 +264,59 @@ onMounted(async () => {
   justify-content: center;
 }
 
+/* ✅ Primary button microinteraction synced with login/register */
 .primary-button {
   width: 18rem;
   height: 3.2rem;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   border: none;
   border-radius: 9999px;
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
+
+  transition:
+    width 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms linear,
+    box-shadow 140ms ease;
+
+  box-shadow: var(--fg-shadow);
+}
+
+.primary-button:not(:disabled):hover {
+  width: 20.5rem;
+  height: 2.9rem;
+  border-radius: 1rem;
+  filter: brightness(0.95);
+  box-shadow: var(--fg-shadow);
+}
+
+.primary-button:not(:disabled):active {
+  filter: brightness(0.9);
+}
+
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
-  background: #595c5e;
-  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+  width: 18rem;
+  height: 3.2rem;
+  border-radius: 9999px;
+  background: var(--fg-muted);
+  box-shadow: var(--fg-shadow);
 }
 
 .link-row {
@@ -289,12 +325,12 @@ onMounted(async () => {
 }
 
 .link-row p {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.875rem;
 }
 
 .link-row a {
-  color: #0545ef;
+  color: var(--fg-primary);
   font-weight: 700;
   text-decoration: none;
   margin-left: 0.25rem;
@@ -313,14 +349,14 @@ onMounted(async () => {
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  border: none;
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
-  background: #fff;
-  color: #0545ef;
+  background: var(--fg-surface);
+  color: var(--fg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  box-shadow: var(--fg-shadow);
   cursor: pointer;
 }
 
@@ -330,6 +366,16 @@ onMounted(async () => {
   .primary-button.is-loading,
   .primary-button:disabled {
     width: min(18rem, 92vw);
+  }
+
+  .primary-button:not(:disabled):hover {
+    width: min(20.5rem, 96vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button {
+    transition: background-color 120ms linear, box-shadow 120ms ease, border-radius 120ms ease;
   }
 }
 

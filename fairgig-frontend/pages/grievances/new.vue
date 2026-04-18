@@ -186,8 +186,8 @@ const submit = async () => {
 <style scoped>
 .new-grievance-page {
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   padding: 2rem;
 }
@@ -209,12 +209,12 @@ const submit = async () => {
 }
 .page-header p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 .header-link {
   text-decoration: none;
-  background: #eef1f3;
-  color: #2c2f31;
+  background: var(--fg-surface-muted);
+  color: var(--fg-text);
   border-radius: 9999px;
   padding: 0.65rem 0.9rem;
   font-size: 0.86rem;
@@ -222,10 +222,11 @@ const submit = async () => {
 }
 
 .form-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 .grievance-form {
   display: grid;
@@ -239,7 +240,7 @@ const submit = async () => {
 .input-group label {
   font-size: 0.84rem;
   font-weight: 700;
-  color: #595c5e;
+  color: var(--fg-muted);
   margin-left: 0.2rem;
 }
 .input-with-icon {
@@ -250,7 +251,7 @@ const submit = async () => {
 .input-with-icon .icon {
   position: absolute;
   left: 0.85rem;
-  color: #abadaf;
+  color: var(--fg-muted);
   font-size: 1.2rem;
   pointer-events: none;
 }
@@ -260,8 +261,8 @@ const submit = async () => {
   width: 100%;
   border: none;
   border-radius: 1rem;
-  background: #eef1f3;
-  color: #2c2f31;
+  background: var(--fg-surface-muted);
+  color: var(--fg-text);
   outline: none;
   font-family: inherit;
   padding: 0.9rem 1rem 0.9rem 2.75rem;
@@ -272,21 +273,21 @@ const submit = async () => {
 .input-with-icon input:focus,
 .input-with-icon select:focus,
 .input-with-icon textarea:focus {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px rgba(5, 69, 239, 0.2);
+  background: var(--fg-surface);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
 .input-with-icon input[aria-invalid='true'],
 .input-with-icon select[aria-invalid='true'],
 .input-with-icon textarea[aria-invalid='true'] {
-  box-shadow: 0 0 0 2px rgba(217, 45, 32, 0.2);
-  background: #fff6f6;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-danger) 20%, transparent);
+  background: color-mix(in srgb, var(--fg-danger) 10%, var(--fg-surface));
 }
 .textarea-wrap .icon {
   top: 0.9rem;
 }
 
 .field-error {
-  color: #d92d20;
+  color: var(--fg-danger);
   font-size: 0.78rem;
   font-weight: 700;
   margin-left: 0.2rem;
@@ -296,10 +297,10 @@ const submit = async () => {
   font-weight: 700;
 }
 .form-message.success {
-  color: #0b7a33;
+  color: var(--fg-success);
 }
 .form-message.error {
-  color: #d92d20;
+  color: var(--fg-danger);
 }
 
 .actions {
@@ -312,18 +313,18 @@ const submit = async () => {
   height: 3.2rem;
   border: none;
   border-radius: 9999px;
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
+  box-shadow: var(--fg-shadow);
 }
 .primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
-  background: #595c5e;
-  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+  background: var(--fg-muted);
+  box-shadow: var(--fg-shadow);
 }
 
 .support-fab {
@@ -335,11 +336,11 @@ const submit = async () => {
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  border: none;
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
-  background: #fff;
-  color: #0545ef;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  box-shadow: var(--fg-shadow);
   display: flex;
   align-items: center;
   justify-content: center;

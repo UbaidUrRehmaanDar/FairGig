@@ -29,13 +29,13 @@
   max-width: 24rem;
   display: flex;
   justify-content: space-around;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: color-mix(in srgb, var(--fg-surface) 80%, transparent);
   backdrop-filter: blur(10px);
   border-radius: 2rem;
   padding: 0.75rem 0.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--fg-shadow);
   z-index: 1000;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--fg-border);
 }
 
 .nav-item {
@@ -43,7 +43,7 @@
   flex-direction: column;
   align-items: center;
   text-decoration: none;
-  color: #595c5e;
+  color: var(--fg-muted);
   transition: all 0.3s ease;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
@@ -61,11 +61,11 @@
 }
 
 .nav-item.active {
-  color: #0545ef;
-  background-color: rgba(5, 69, 239, 0.1);
+  color: var(--fg-primary);
+  background-color: color-mix(in srgb, var(--fg-primary) 12%, transparent);
 }
 
 .nav-item:not(.active):hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: color-mix(in srgb, var(--fg-text) 6%, transparent);
 }
 </style>

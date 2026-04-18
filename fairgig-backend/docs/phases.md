@@ -52,12 +52,12 @@
 ## Phase 4 — Anomaly Service
 > Separate FastAPI process on port 8001 — judges will call this directly
 
-- [x] `POST /anomaly/detect` accepts `{ worker_id, earnings[] }` and returns anomalies
-- [x] Unusual deduction detection (Z-score > 2.0) working
-- [x] Income drop detection (>20% shift-on-shift) working
-- [x] Zero-net anomaly detection working
-- [x] Each anomaly has: `date`, `type`, `severity`, `value`, `explanation` (plain English)
-- [x] Tested with judge payload (deduction spike from 20% → 50%)
+- [ ] `POST /anomaly/detect` accepts `{ worker_id, earnings[] }` and returns anomalies
+- [ ] Unusual deduction detection (Z-score > 2.0) working
+- [ ] Income drop detection (>20% shift-on-shift) working
+- [ ] Zero-net anomaly detection working
+- [ ] Each anomaly has: `date`, `type`, `severity`, `value`, `explanation` (plain English)
+- [ ] Tested with judge payload (deduction spike from 20% → 50%)
 
 **✅ Gate: POST judge payload → receive at least 2 anomalies with human-readable explanations.**
 

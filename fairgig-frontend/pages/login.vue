@@ -41,6 +41,15 @@
       <div class="form-container">
         <div class="mobile-logo">FairGig</div>
 
+        <button
+          type="button"
+          class="theme-toggle"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          <span class="icon">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
+        </button>
+
         <div class="form-header">
           <h2>Access Secure Portal</h2>
           <p>Please enter your credentials to continue.</p>
@@ -139,6 +148,7 @@ const password = ref('')
 const rememberDevice = ref(false)
 const isLoggingIn = ref(false)
 const showPassword = ref(false)
+const isDark = ref(false)
 
 const errors = ref<{ email: string; password: string }>({
   email: '',
@@ -147,6 +157,17 @@ const errors = ref<{ email: string; password: string }>({
 
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value
+}
+
+const applyTheme = (mode: 'light' | 'dark') => {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('dark', mode === 'dark')
+  localStorage.setItem('fg_theme', mode)
+  isDark.value = mode === 'dark'
+}
+
+const toggleTheme = () => {
+  applyTheme(isDark.value ? 'light' : 'dark')
 }
 
 const validateForm = () => {
@@ -212,6 +233,13 @@ const handleLogin = async () => {
 }
 
 onMounted(async () => {
+  const savedTheme = localStorage.getItem('fg_theme')
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    applyTheme(savedTheme)
+  } else {
+    isDark.value = document.documentElement.classList.contains('dark')
+  }
+
   const { data } = await supabase.auth.getSession()
   if (data.session?.user) {
     await navigateTo(resolveTargetByRole(resolveRole(data.session.user)))
@@ -225,8 +253,8 @@ onMounted(async () => {
   display: flex;
   min-height: 100vh;
   overflow: hidden;
-  background-color: #f5f7f9;
-  color: #2c2f31;
+  background-color: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
 }
 
@@ -320,7 +348,7 @@ onMounted(async () => {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  border: 2px solid #0545ef;
+  border: 2px solid var(--fg-primary);
   object-fit: cover;
   margin-left: 0.75rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
@@ -331,7 +359,7 @@ onMounted(async () => {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
-  border: 2px solid #0545ef;
+  border: 2px solid var(--fg-primary);
   background-color: #859aff;
   display: flex;
   align-items: center;
@@ -361,6 +389,37 @@ onMounted(async () => {
 .form-container {
   width: 100%;
   max-width: 28rem;
+  position: relative;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 9999px;
+  border: 1px solid var(--fg-border);
+  background: var(--fg-surface);
+  color: var(--fg-text);
+  box-shadow: var(--fg-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms linear, transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.theme-toggle:hover {
+  background: var(--fg-surface-muted);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--fg-primary) 20%, transparent),
+    var(--fg-shadow);
 }
 
 .mobile-logo {
@@ -370,7 +429,7 @@ onMounted(async () => {
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #0545ef;
+  color: var(--fg-primary);
 }
 
 .form-header {
@@ -386,7 +445,7 @@ onMounted(async () => {
 
 .form-header p {
   margin-top: 0.5rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .login-form {
@@ -404,7 +463,7 @@ onMounted(async () => {
 .input-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #595c5e;
+  color: var(--fg-muted);
   margin-left: 0.25rem;
 }
 
@@ -418,7 +477,7 @@ onMounted(async () => {
 .label-container a {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #0545ef;
+  color: var(--fg-primary);
   text-decoration: none;
 }
 .label-container a:hover {
@@ -435,38 +494,38 @@ onMounted(async () => {
   position: absolute;
   left: 1rem;
   pointer-events: none;
-  color: #abadaf;
+  color: var(--fg-muted);
   font-size: 1.25rem;
   transition: color 0.2s;
 }
 
 .input-with-icon:focus-within .icon {
-  color: #0545ef;
+  color: var(--fg-primary);
 }
 
 .input-with-icon input {
   width: 100%;
   padding: 1rem 3.25rem 1rem 3rem;
-  background-color: #eef1f3;
+  background-color: var(--fg-surface-muted);
   border: none;
   border-radius: 1rem;
-  color: #2c2f31;
+  color: var(--fg-text);
   outline: none;
   transition: box-shadow 0.2s, background-color 0.2s;
 }
 
 .input-with-icon input::placeholder {
-  color: #abadaf;
+  color: var(--fg-placeholder-color);
 }
 
 .input-with-icon input:focus {
-  box-shadow: 0 0 0 2px rgba(5, 69, 239, 0.2);
-  background-color: #ffffff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
+  background-color: var(--fg-surface);
 }
 
 .input-with-icon input[aria-invalid='true'] {
-  box-shadow: 0 0 0 2px rgba(217, 45, 32, 0.2);
-  background-color: #fff6f6;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-danger) 20%, transparent);
+  background-color: color-mix(in srgb, var(--fg-danger) 10%, var(--fg-surface));
 }
 
 .field-error {
@@ -474,7 +533,7 @@ onMounted(async () => {
   margin-left: 0.25rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #d92d20;
+  color: var(--fg-danger);
   line-height: 1.2;
 }
 
@@ -493,7 +552,7 @@ onMounted(async () => {
   color: #abadaf;
 }
 .icon-button:hover {
-  color: #595c5e;
+  color: var(--fg-muted);
   background: rgba(171, 173, 175, 0.12);
 }
 
@@ -525,7 +584,7 @@ onMounted(async () => {
 .switch .slider {
   position: absolute;
   inset: 0;
-  background-color: #d9dde0;
+  background-color: var(--fg-border);
   border-radius: 9999px;
   transition: 0.25s ease;
   pointer-events: none;
@@ -539,12 +598,12 @@ onMounted(async () => {
   left: 2px;
   top: 2px;
   border-radius: 50%;
-  background-color: #fff;
+  background-color: var(--fg-surface);
   transition: 0.25s ease;
 }
 
 .switch input:checked + .slider {
-  background-color: #0545ef;
+  background-color: var(--fg-primary);
 }
 
 .switch input:checked + .slider::before {
@@ -552,13 +611,13 @@ onMounted(async () => {
 }
 
 .switch input:focus-visible + .slider {
-  box-shadow: 0 0 0 3px rgba(5, 69, 239, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .remember-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #595c5e;
+  color: var(--fg-muted);
   margin: 0;
   cursor: pointer;
 }
@@ -567,7 +626,7 @@ onMounted(async () => {
 .remember-me label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #595c5e;
+  color: var(--fg-muted);
   margin: 0;
   cursor: pointer;
 }
@@ -580,7 +639,7 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #d9dde0;
+  background-color: var(--fg-border);
   border-radius: 9999px;
   transition: 0.25s ease;
 }
@@ -592,7 +651,7 @@ onMounted(async () => {
   width: 1rem;
   left: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: var(--fg-surface);
   border-radius: 50%;
   transition: 0.25s ease;
 }
@@ -613,7 +672,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
 
-  background-color: #0545ef;
+  background-color: var(--fg-primary);
   color: #f2f1ff;
   border: none;
   border-radius: 9999px;
@@ -628,26 +687,24 @@ onMounted(async () => {
     background-color 120ms linear,
     box-shadow 140ms ease;
 
-  box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
+  box-shadow: var(--fg-shadow);
 }
 
 .primary-button:not(:disabled):hover {
   width: 20.5rem;
   height: 2.9rem;
   border-radius: 1rem;
-  background-color: #003bd4;
-  box-shadow: 0 16px 28px -10px rgba(5, 69, 239, 0.35);
+  filter: brightness(0.95);
+  box-shadow: var(--fg-shadow);
 }
 
 .primary-button:not(:disabled):active {
-  background-color: #0033bb;
+  filter: brightness(0.9);
 }
 
 .primary-button:focus-visible {
   outline: none;
-  box-shadow:
-    0 0 0 3px rgba(5, 69, 239, 0.25),
-    0 16px 28px -10px rgba(5, 69, 239, 0.35);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
 }
 
 .primary-button.is-loading,
@@ -656,8 +713,8 @@ onMounted(async () => {
   width: 18rem;
   height: 3.2rem;
   border-radius: 9999px;
-  background-color: #595c5e;
-  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+  background-color: var(--fg-muted);
+  box-shadow: var(--fg-shadow);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -684,12 +741,12 @@ onMounted(async () => {
 }
 
 .signup-link p {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.875rem;
 }
 
 .signup-link a {
-  color: #0545ef;
+  color: var(--fg-primary);
   font-weight: 700;
   text-decoration: none;
   margin-left: 0.25rem;
@@ -708,20 +765,20 @@ onMounted(async () => {
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  background-color: #ffffff;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  background-color: var(--fg-surface);
+  box-shadow: var(--fg-shadow);
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0545ef;
-  border: none;
+  color: var(--fg-primary);
+  border: 1px solid var(--fg-border);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .support-fab button:hover {
-  background-color: #0545ef;
+  background-color: var(--fg-primary);
   color: #f2f1ff;
 }
 
