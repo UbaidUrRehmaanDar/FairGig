@@ -1,0 +1,65 @@
+:root {
+  --fg-form-font-weight: 600;
+
+  /* Light theme (existing palette) */
+  --fg-bg: #f5f7f9;
+  --fg-surface: #ffffff;
+  --fg-surface-muted: #eef1f3;
+  --fg-text: #2c2f31;
+  --fg-muted: #595c5e;
+  --fg-border: #eef1f3;
+  --fg-primary: #0545ef;
+  --fg-danger: #d92d20;
+  --fg-success: #0b7a33;
+
+  --fg-placeholder-color: #c0c4c8;
+  --fg-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+}
+
+/* Dark mode */
+html.dark {
+  --fg-bg: #0c1118;
+  --fg-surface: #121a24;
+  --fg-surface-muted: #1b2533;
+  --fg-text: #e8edf3;
+  --fg-muted: #b2bac4;
+  --fg-border: #223043;
+  --fg-primary: #5b8cff;
+  --fg-danger: #ff6b5e;
+  --fg-success: #4bd07d;
+
+  --fg-placeholder-color: #7d8896;
+  --fg-shadow: 0 16px 30px -20px rgba(0, 0, 0, 0.65);
+}
+
+html,
+body {
+  background: var(--fg-bg);
+  color: var(--fg-text);
+}
+
+/* Make field text a bit bolder (but not heading-bold) */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+select,
+textarea {
+  font-weight: var(--fg-form-font-weight);
+}
+
+/* Lighter placeholders everywhere */
+input::placeholder,
+textarea::placeholder {
+  color: var(--fg-placeholder-color);
+  opacity: 1; /* Firefox */
+  font-weight: 500;
+}
+
+/* Best-effort: keep disabled "Select ..." options light */
+select option[disabled][value=''] {
+  color: var(--fg-placeholder-color);
+}
+
+/* Optional enhancement when supported: if the selected option is the disabled empty one */
+select:has(option:checked[disabled][value='']) {
+  color: var(--fg-placeholder-color);
+  font-weight: 500;
+}

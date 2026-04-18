@@ -138,8 +138,8 @@ onMounted(async () => {
 .auth-index {
   display: flex;
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   overflow: hidden;
 }
@@ -218,7 +218,7 @@ onMounted(async () => {
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #0545ef;
+  color: var(--fg-primary);
 }
 
 .header {
@@ -234,7 +234,7 @@ onMounted(async () => {
 
 .header p {
   margin-top: 0.5rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .status-chip {
@@ -243,8 +243,9 @@ onMounted(async () => {
   gap: 0.65rem;
   padding: 0.95rem 1rem;
   border-radius: 1rem;
-  background: #eef1f3;
-  color: #595c5e;
+  background: var(--fg-surface);
+  color: var(--fg-muted);
+  border: 1px solid var(--fg-border);
   font-weight: 600;
 }
 
@@ -268,19 +269,19 @@ onMounted(async () => {
   height: 3.2rem;
   border: none;
   border-radius: 9999px;
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
+  box-shadow: var(--fg-shadow);
 }
 
 .primary-button.is-loading,
 .primary-button:disabled {
   cursor: not-allowed;
-  background: #595c5e;
-  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+  background: var(--fg-muted);
+  box-shadow: var(--fg-shadow);
 }
 
 .link-row {
@@ -289,12 +290,12 @@ onMounted(async () => {
 }
 
 .link-row p {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.875rem;
 }
 
 .link-row a {
-  color: #0545ef;
+  color: var(--fg-primary);
   font-weight: 700;
   text-decoration: none;
   margin-left: 0.25rem;
@@ -313,14 +314,14 @@ onMounted(async () => {
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  border: none;
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
-  background: #fff;
-  color: #0545ef;
+  background: var(--fg-surface);
+  color: var(--fg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  box-shadow: var(--fg-shadow);
   cursor: pointer;
 }
 

@@ -162,8 +162,8 @@ await load()
 <style scoped>
 .grievance-board-page {
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   padding: 2rem;
 }
@@ -186,11 +186,11 @@ await load()
 }
 .page-header p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 .header-action {
   text-decoration: none;
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   border-radius: 9999px;
   padding: 0.7rem 1rem;
@@ -200,10 +200,11 @@ await load()
 
 .filters-card,
 .list-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 .filters-grid {
   display: grid;
@@ -218,7 +219,7 @@ await load()
 .input-group label {
   font-size: 0.84rem;
   font-weight: 700;
-  color: #595c5e;
+  color: var(--fg-muted);
   margin-left: 0.2rem;
 }
 .input-with-icon {
@@ -229,7 +230,7 @@ await load()
 .input-with-icon .icon {
   position: absolute;
   left: 0.85rem;
-  color: #abadaf;
+  color: var(--fg-muted);
   font-size: 1.2rem;
   pointer-events: none;
 }
@@ -237,15 +238,15 @@ await load()
   width: 100%;
   border: none;
   border-radius: 1rem;
-  background: #eef1f3;
-  color: #2c2f31;
+  background: var(--fg-surface-muted);
+  color: var(--fg-text);
   outline: none;
   font-family: inherit;
   padding: 0.88rem 1rem 0.88rem 2.7rem;
 }
 .input-with-icon select:focus {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px rgba(5, 69, 239, 0.2);
+  background: var(--fg-surface);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
 
 .list-header {
@@ -258,7 +259,7 @@ await load()
   font-weight: 800;
 }
 .count-pill {
-  background: #eef1f3;
+  background: var(--fg-surface-muted);
   border-radius: 9999px;
   padding: 0.3rem 0.65rem;
   font-size: 0.76rem;
@@ -266,7 +267,7 @@ await load()
 }
 .list-state {
   margin-top: 0.75rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .grievance-list {
@@ -275,10 +276,10 @@ await load()
   gap: 0.75rem;
 }
 .grievance-item {
-  border: 1px solid #eef1f3;
+  border: 1px solid var(--fg-border);
   border-radius: 0.95rem;
   padding: 0.85rem;
-  background: #fbfcfd;
+  background: var(--fg-surface-muted);
 }
 .item-top {
   display: flex;
@@ -300,12 +301,13 @@ await load()
   font-weight: 700;
 }
 .platform-pill {
-  background: #e6edff;
-  color: #0545ef;
+  background: color-mix(in srgb, var(--fg-primary) 14%, var(--fg-surface));
+  color: var(--fg-primary);
 }
 .category-pill {
-  background: #eef1f3;
-  color: #595c5e;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
+  color: var(--fg-muted);
 }
 .status-pill.open {
   background: #fff6df;
@@ -316,11 +318,11 @@ await load()
   color: #8a1f1f;
 }
 .status-pill.resolved {
-  background: #e7f8ef;
-  color: #0b7a33;
+  background: color-mix(in srgb, var(--fg-success) 14%, var(--fg-surface));
+  color: var(--fg-success);
 }
 .date {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.8rem;
 }
 
@@ -331,7 +333,7 @@ await load()
 }
 .description {
   margin-top: 0.4rem;
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.9rem;
   line-height: 1.45;
 }
@@ -351,11 +353,12 @@ await load()
   cursor: pointer;
 }
 .vote-btn {
-  background: #eef1f3;
-  color: #2c2f31;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
+  color: var(--fg-text);
 }
 .escalate-btn {
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
 }
 
@@ -368,11 +371,11 @@ await load()
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  border: none;
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
-  background: #fff;
-  color: #0545ef;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  box-shadow: var(--fg-shadow);
   display: flex;
   align-items: center;
   justify-content: center;

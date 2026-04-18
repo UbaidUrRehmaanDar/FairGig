@@ -176,8 +176,8 @@ await loadKpis()
 <style scoped>
 .advocate-dashboard-page {
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   padding: 2rem;
 }
@@ -201,19 +201,19 @@ await loadKpis()
 }
 .page-header p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 .header-action {
   border: none;
   border-radius: 9999px;
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   font-weight: 700;
   padding: 0.7rem 1rem;
   cursor: pointer;
 }
 .header-action:disabled {
-  background: #595c5e;
+  background: var(--fg-muted);
   cursor: not-allowed;
 }
 
@@ -223,13 +223,14 @@ await loadKpis()
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 .kpi-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 .card-label {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -240,10 +241,11 @@ await loadKpis()
 }
 
 .panel-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 .panel-header h2 {
   font-size: 1.05rem;
@@ -251,7 +253,7 @@ await loadKpis()
 }
 .panel-state {
   margin-top: 0.75rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .flag-list {
@@ -260,10 +262,10 @@ await loadKpis()
   gap: 0.75rem;
 }
 .flag-card {
-  border: 1px solid #eef1f3;
+  border: 1px solid var(--fg-border);
   border-radius: 0.9rem;
   padding: 0.85rem;
-  background: #fbfcfd;
+  background: var(--fg-surface-muted);
 }
 .flag-top {
   display: flex;
@@ -280,7 +282,7 @@ await loadKpis()
 }
 .flag-card p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.88rem;
 }
 
@@ -296,16 +298,16 @@ table {
 th,
 td {
   text-align: left;
-  border-bottom: 1px solid #eef1f3;
+  border-bottom: 1px solid var(--fg-border);
   padding: 0.7rem 0.45rem;
   font-size: 0.87rem;
 }
 th {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-weight: 700;
 }
 .high {
-  color: #d92d20;
+  color: var(--fg-danger);
   font-weight: 800;
 }
 
@@ -321,10 +323,10 @@ th {
   gap: 0.7rem;
 }
 .zone-card {
-  border: 1px solid #eef1f3;
+  border: 1px solid var(--fg-border);
   border-radius: 0.9rem;
   padding: 0.85rem;
-  background: #fbfcfd;
+  background: var(--fg-surface-muted);
 }
 .zone-card h3 {
   font-size: 0.95rem;
@@ -332,7 +334,7 @@ th {
 }
 .zone-card p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.86rem;
 }
 
@@ -346,7 +348,7 @@ th {
   grid-template-columns: 1fr 1fr auto;
   gap: 0.5rem;
   align-items: center;
-  border: 1px solid #eef1f3;
+  border: 1px solid var(--fg-border);
   border-radius: 0.8rem;
   padding: 0.6rem 0.7rem;
 }
@@ -354,11 +356,11 @@ th {
   font-weight: 700;
 }
 .category {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.88rem;
 }
 .count {
-  background: #eef1f3;
+  background: var(--fg-surface-muted);
   border-radius: 9999px;
   padding: 0.25rem 0.55rem;
   font-size: 0.75rem;
@@ -374,11 +376,11 @@ th {
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  background: #fff;
-  border: none;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
-  color: #0545ef;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  color: var(--fg-primary);
+  box-shadow: var(--fg-shadow);
   display: flex;
   align-items: center;
   justify-content: center;

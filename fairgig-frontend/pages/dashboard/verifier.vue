@@ -209,8 +209,8 @@ await loadPending()
 <style scoped>
 .verifier-dashboard-page {
   min-height: 100vh;
-  background: #f5f7f9;
-  color: #2c2f31;
+  background: var(--fg-bg);
+  color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
   padding: 2rem;
 }
@@ -237,11 +237,11 @@ await loadPending()
 
 .page-header p {
   margin-top: 0.35rem;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .header-action {
-  background: #0545ef;
+  background: var(--fg-primary);
   color: #f2f1ff;
   border: none;
   border-radius: 9999px;
@@ -252,7 +252,7 @@ await loadPending()
 }
 .header-action:disabled {
   cursor: not-allowed;
-  background: #595c5e;
+  background: var(--fg-muted);
 }
 
 .summary-grid {
@@ -262,14 +262,15 @@ await loadPending()
 }
 
 .summary-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 
 .card-label {
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -281,14 +282,15 @@ await loadPending()
 }
 
 .card-value.highlight {
-  color: #0545ef;
+  color: var(--fg-primary);
 }
 
 .queue-card {
-  background: #ffffff;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
-  box-shadow: 0 12px 24px -16px rgba(44, 47, 49, 0.18);
+  box-shadow: var(--fg-shadow);
 }
 
 .queue-header {
@@ -309,15 +311,15 @@ await loadPending()
   font-weight: 700;
 }
 .status-message.success {
-  color: #0b7a33;
+  color: var(--fg-success);
 }
 .status-message.error {
-  color: #d92d20;
+  color: var(--fg-danger);
 }
 
 .queue-state {
   margin-top: 0.9rem;
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.92rem;
 }
 
@@ -328,10 +330,10 @@ await loadPending()
 }
 
 .queue-item {
-  border: 1px solid #eef1f3;
+  border: 1px solid var(--fg-border);
   border-radius: 0.9rem;
   padding: 0.9rem;
-  background: #fbfcfd;
+  background: var(--fg-surface-muted);
 }
 
 .item-top {
@@ -348,20 +350,21 @@ await loadPending()
 
 .meta p {
   margin-top: 0.25rem;
-  color: #595c5e;
+  color: var(--fg-muted);
   font-size: 0.84rem;
 }
 .meta span {
   font-weight: 700;
-  color: #2c2f31;
+  color: var(--fg-text);
 }
 
 .preview-link {
   text-decoration: none;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0545ef;
-  background: #eef1f3;
+  color: var(--fg-primary);
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   border-radius: 9999px;
   padding: 0.45rem 0.7rem;
   white-space: nowrap;
@@ -376,24 +379,25 @@ await loadPending()
 .review-controls label {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #595c5e;
+  color: var(--fg-muted);
 }
 
 .review-controls textarea {
   width: 100%;
   border: none;
   border-radius: 0.9rem;
-  background: #eef1f3;
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
   padding: 0.75rem 0.85rem;
   font-family: inherit;
-  color: #2c2f31;
+  color: var(--fg-text);
   resize: vertical;
   outline: none;
 }
 
 .review-controls textarea:focus {
-  box-shadow: 0 0 0 2px rgba(5, 69, 239, 0.2);
-  background: #ffffff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg-primary) 20%, transparent);
+  background: var(--fg-surface);
 }
 
 .action-row {
@@ -417,8 +421,8 @@ await loadPending()
 }
 
 .action-btn.approve {
-  background: #e7f8ef;
-  color: #0b7a33;
+  background: color-mix(in srgb, var(--fg-success) 14%, var(--fg-surface));
+  color: var(--fg-success);
 }
 .action-btn.flag {
   background: #fff6df;
@@ -438,14 +442,14 @@ await loadPending()
 .support-fab button {
   width: 3.5rem;
   height: 3.5rem;
-  background-color: #ffffff;
-  box-shadow: 0 24px 24px -4px rgba(44, 47, 49, 0.12);
+  background-color: var(--fg-surface);
+  box-shadow: var(--fg-shadow);
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0545ef;
-  border: none;
+  color: var(--fg-primary);
+  border: 1px solid var(--fg-border);
   cursor: pointer;
 }
 

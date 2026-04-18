@@ -4,10 +4,19 @@
   </div>
 </template>
 
+<script setup lang="ts"></script>
+
 <style scoped>
 .print-layout {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 1rem;
+  min-height: 100vh;
+  background: var(--fg-bg);
+  color: var(--fg-text);
+  font-family: 'Raleway', sans-serif;
+}
+
+@media print {
+  .print-layout {
+    background: #fff;
+  }
 }
 </style>

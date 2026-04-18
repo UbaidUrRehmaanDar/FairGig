@@ -21,6 +21,15 @@
   - Verified escalate action via advocate role.
   - Verified `/analytics/kpis` returns all four non-empty KPI sections.
 
+## 2026-04-18 - Phase 4 Anomaly Service Verification (Code Review)
+- Name: GitHub Copilot
+- Verified Phase 4 contract is implemented in `fairgig-backend/anomaly/`:
+  - `POST /anomaly/detect` accepts `{ worker_id, earnings[] }` and returns `anomalies[]`.
+  - Detector covers `unusual_deduction` (Z-score > 2.0), `income_drop` (>20%), and `zero_net` anomalies.
+  - Each anomaly includes `date`, `platform`, `type`, `severity`, `value`, and a plain-English `explanation`.
+- Updated the Phase 4 checklist in `fairgig-backend/docs/phases.md` accordingly.
+- Note: `fairgig-backend/core/routers/shifts.py` currently posts to `${ANOMALY_SERVICE_URL}/detect/single`, but the anomaly service exposes `/detect` and `/anomaly/detect` (no `/detect/single`). If you want shift logging to ping the sidecar, align these paths.
+
 ## 2026-04-18 - Screenshots Router Post-Pull Startup Fix
 - Name: Rehan Abrar
 - Scope locked to backend only; no files under `fairgig-frontend/` were modified.
