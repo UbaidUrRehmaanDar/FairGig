@@ -1,13 +1,14 @@
 import os
 from datetime import datetime
-from typing import Literal, Optional
-from uuid import uuid4
+from typing import Any, Literal, Optional
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from supabase import Client, create_client
 
-from auth_middleware import require_role
+from auth_middleware import get_current_user, require_role
 from db import get_pool
 
 router = APIRouter()
@@ -41,6 +42,32 @@ def get_supabase_client() -> Client:
     return _supabase_client
 
 
+def _get_bucket_name() -> str:
+    return (os.getenv("SUPABASE_SCREENSHOT_BUCKET") or "earnings").strip() or "earnings"
+
+
+def _extract_signed_url(value: Any) -> Optional[str]:
+    if isinstance(value, dict):
+        return value.get("signedURL") or value.get("signedUrl")
+
+    data = getattr(value, "data", None)
+    if isinstance(data, dict):
+        return data.get("signedURL") or data.get("signedUrl")
+
+    return None
+
+
+def _to_absolute_signed_url(signed_url: str) -> str:
+    if signed_url.startswith("http://") or signed_url.startswith("https://"):
+        return signed_url
+
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
+    if signed_url.startswith("/") and supabase_url:
+        return f"{supabase_url}/storage/v1{signed_url}"
+
+    return signed_url
+
+
 @router.post("/upload/{shift_id}")
 async def upload_screenshot(
     shift_id: str,
@@ -69,7 +96,7 @@ async def upload_screenshot(
     extension = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
     storage_path = f"screenshots/{user['id']}/{shift_id}/{uuid4()}.{extension}"
 
-    storage = get_supabase_client().storage.from_("earnings")
+    storage = get_supabase_client().storage.from_(_get_bucket_name())
     try:
         storage.upload(
             storage_path,
@@ -220,12 +247,12 @@ async def view_screenshot(
     if not is_privileged and not is_owner:
         raise HTTPException(status_code=403, detail="Cannot view screenshot for another worker")
 
-    storage = _get_storage_client()
     bucket = _get_bucket_name()
+    storage = get_supabase_client().storage.from_(bucket)
     expires_in = 60
 
     try:
-        signed_result = storage.storage.from_(bucket).create_signed_url(
+        signed_result = storage.create_signed_url(
             screenshot["storage_path"],
             expires_in,
         )

@@ -35,15 +35,15 @@
 ## Phase 3 — Grievances & Analytics
 > Grievance board CRUD + advocate KPI endpoint
 
-- [ ] `POST /grievances` creates complaint
-- [ ] `GET /grievances` returns list, filters by `?platform=&category=&status=`
-- [ ] `POST /grievances/{id}/upvote` increments upvotes
-- [ ] `PATCH /grievances/{id}/escalate` sets status to escalated (advocate only)
-- [ ] `GET /analytics/kpis` returns all four sections:
-  - [ ] `commission_trends`
-  - [ ] `income_by_zone`
-  - [ ] `vulnerability_flags` (workers with >20% income drop)
-  - [ ] `top_complaints`
+- [x] `POST /grievances` creates complaint
+- [x] `GET /grievances` returns list, filters by `?platform=&category=&status=`
+- [x] `POST /grievances/{id}/upvote` increments upvotes
+- [x] `PATCH /grievances/{id}/escalate` sets status to escalated (advocate only)
+- [x] `GET /analytics/kpis` returns all four sections:
+  - [x] `commission_trends`
+  - [x] `income_by_zone`
+  - [x] `vulnerability_flags` (workers with >20% income drop)
+  - [x] `top_complaints`
 
 **✅ Gate: POST a grievance → GET /grievances returns it with filters working → GET /analytics/kpis returns non-empty data.**
 

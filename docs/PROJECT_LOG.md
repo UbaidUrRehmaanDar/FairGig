@@ -1,5 +1,36 @@
 # Project Log
 
+## 2026-04-18 - Phase 3 Grievances and Analytics Complete
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified.
+- Implemented full grievance board endpoints in `fairgig-backend/core/routers/grievances.py`:
+  - `POST /grievances` now inserts complaint rows tied to authenticated worker profile.
+  - `GET /grievances` now returns persisted items with filter support for `platform`, `category`, and `status`.
+  - `POST /grievances/{id}/upvote` now atomically increments upvotes and updates timestamp.
+  - `PATCH /grievances/{id}/escalate` now enforces advocate role and updates grievance status to `escalated`.
+- Implemented advocate KPI endpoint in `fairgig-backend/core/routers/analytics.py`:
+  - `commission_trends` from shift-level commission percentages.
+  - `income_by_zone` from profile city-zone grouped net earnings.
+  - `vulnerability_flags` from worker shift-on-shift income drop >20%.
+  - `top_complaints` from grievance category counts and upvote totals.
+- Updated backend phase tracker in `fairgig-backend/docs/phases.md` by marking all Phase 3 items complete.
+- Completed live end-to-end Phase 3 gate verification against running API:
+  - Created grievance as worker.
+  - Verified listing and filters (`open` and `escalated`) include created grievance.
+  - Verified upvote increment endpoint.
+  - Verified escalate action via advocate role.
+  - Verified `/analytics/kpis` returns all four non-empty KPI sections.
+
+## 2026-04-18 - Screenshots Router Post-Pull Startup Fix
+- Name: Rehan Abrar
+- Scope locked to backend only; no files under `fairgig-frontend/` were modified.
+- Fixed post-pull startup regression in `fairgig-backend/core/routers/screenshots.py`:
+  - Added missing imports used by `GET /screenshots/view/{screenshot_id}` (`get_current_user`, `UUID`, `RedirectResponse`).
+  - Restored signed URL helper utilities used by the view endpoint (`_extract_signed_url`, `_to_absolute_signed_url`).
+  - Added bucket resolver helper (`_get_bucket_name`) and reused it in upload + view paths.
+  - Replaced broken helper call chain with active client usage (`get_supabase_client().storage.from_(bucket).create_signed_url(...)`).
+- Result: core API import path no longer crashes on `NameError` during startup.
+
 ## 2026-04-18 - Private Screenshot View Proxy Endpoint
 - Name: Rehan Abrar
 - Scope locked to backend only; no files under `fairgig-frontend/` were modified.
