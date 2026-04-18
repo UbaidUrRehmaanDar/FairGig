@@ -302,14 +302,16 @@ h1 {
 
 .register-form button {
   width: 100%;
-  padding: 1.25rem;
+  padding: 0.9rem 1rem;
   background-color: #0545ef;
   color: #f2f1ff;
   font-weight: 700;
   border-radius: 9999px;
-  font-size: 1.125rem;
+  font-size: 1rem;
   box-shadow: 0 24px 24px -4px rgba(5, 69, 239, 0.15);
-  transition: border-radius 0.3s ease-in-out, background-color 0.3s ease-in-out;
+  transform: translateZ(0);
+  will-change: transform, border-radius;
+  transition: background-color 0.2s ease, border-radius 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
   border: none;
   cursor: pointer;
 }
@@ -317,10 +319,39 @@ h1 {
 .register-form button:hover {
   background-color: #003bd4;
   border-radius: 1rem;
+  box-shadow: 0 32px 28px -12px rgba(5, 69, 239, 0.22);
+  animation: primary-button-boom 220ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
 .register-form button:active {
-  transform: scale(0.98);
+  animation: none;
+  transform: scale(0.985);
+}
+
+.register-form button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(5, 69, 239, 0.25), 0 24px 24px -4px rgba(5, 69, 239, 0.15);
+}
+
+@keyframes primary-button-boom {
+  0% {
+    transform: scale(1);
+  }
+  60% {
+    transform: scale(1.07);
+  }
+  100% {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .register-form button {
+    transition: background-color 0.2s ease, border-radius 0.25s ease, box-shadow 0.25s ease;
+  }
+  .register-form button:hover {
+    animation: none;
+  }
 }
 
 .login-link {

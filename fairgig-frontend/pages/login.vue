@@ -6,12 +6,31 @@
         <div class="logo">FairGig</div>
         <div class="main-text">
           <h1>Welcome back to FairGig.</h1>
-          <p>Empowering the future of independent work with fair pay, better benefits, and total transparency.</p>
+          <p>
+            Empowering the future of independent work with fair pay, better benefits, and total
+            transparency.
+          </p>
         </div>
+
         <div class="social-proof">
-          <div class="avatars">
-            <img alt="portrait of professional woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_Wh3ztkZfc9p0HSzQ4UtEGqVSbQRHXpPgqqZCemFr6jbu6KBP5iLY4do5fPjljmkOyA55BckZ-3YDSJqWLeU9ETcLBC9WIFxEhzxIaoXVeBz3r0kibWDTIQQ0uAmeGZ6wnLN0XFfRlj33OwvLxdx_XJbjl6v6_cxUviwIBC__TsOLbHS3CFwMYCvu5I3Apa-xZSQetb7DBZsRdeVtUcec26x1pLJEogEFEW3BnMf4W4DygXqbsJnmRcaFVvGCZI5Ev2T46uSbEds"/>
-            <img alt="portrait of professional man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvpSdedvKTaubZjranUNgbgIrLIVxVl3R6-EUyMry52PDlmvcR25sGIoO_pQYeduNsx8cUIfG8Jn_zmJ1R5cfl7mZMNucehNsbj0SWE2mHUIXyF1YA3R82i0bcEBxsEE6IO_mIVRNxIwj44C524lBlfQC2Knfgmn4Gth7W4aiAFWq98sVPu4hh4eWVYNVZAIN74-7Q3eoz-o8eHumqpGsnV9-JsCxwmYfk4dpxizgiW9zTiUn-hfqifEPl-ykG_FRfdm2Sv_bScHw"/>
+          <div class="avatars" aria-hidden="true">
+            <!-- Use proper, non-AI, simple avatar icons (inline SVG) -->
+            <span class="avatar-icon" title="Professional">
+              <svg viewBox="0 0 24 24" role="img" aria-label="Professional avatar">
+                <path
+                  d="M12 12.2c2.7 0 4.9-2.2 4.9-4.9S14.7 2.4 12 2.4 7.1 4.6 7.1 7.3s2.2 4.9 4.9 4.9Zm0 2.2c-4 0-7.5 2.2-9.2 5.5-.3.6.1 1.3.8 1.3h16.8c.7 0 1.1-.7.8-1.3-1.7-3.3-5.2-5.5-9.2-5.5Z"
+                />
+              </svg>
+            </span>
+
+            <span class="avatar-icon" title="Professional">
+              <svg viewBox="0 0 24 24" role="img" aria-label="Professional avatar">
+                <path
+                  d="M12 12.2c2.7 0 4.9-2.2 4.9-4.9S14.7 2.4 12 2.4 7.1 4.6 7.1 7.3s2.2 4.9 4.9 4.9Zm0 2.2c-4 0-7.5 2.2-9.2 5.5-.3.6.1 1.3.8 1.3h16.8c.7 0 1.1-.7.8-1.3-1.7-3.3-5.2-5.5-9.2-5.5Z"
+                />
+              </svg>
+            </span>
+
             <div class="avatar-plus">+2k</div>
           </div>
           <p>Joined by 2,000+ gig professionals this week.</p>
@@ -23,31 +42,49 @@
     <main class="right-section">
       <div class="form-container">
         <div class="mobile-logo">FairGig</div>
+
         <div class="form-header">
           <h2>Access Secure Portal</h2>
           <p>Please enter your credentials to continue.</p>
         </div>
-        <form class="login-form" @submit.prevent>
+
+        <form class="login-form" @submit.prevent="handleLogin">
           <div class="input-group">
             <label for="email">Email Address</label>
             <div class="input-with-icon">
               <span class="icon">email</span>
-              <input id="email" type="email" required />
+              <input id="email" v-model="email" type="email" required />
             </div>
           </div>
+
           <div class="input-group">
             <div class="label-container">
               <label for="password">Password</label>
               <a href="#">Forgot Password?</a>
             </div>
+
             <div class="input-with-icon">
               <span class="icon">lock</span>
-              <input id="password" type="password" required />
-              <button type="button" class="icon-button">
-                <span class="icon">visibility</span>
+
+              <!-- Keep the button visually *inside* the field by sharing the same wrapper + padding -->
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+              />
+
+              <button
+                type="button"
+                class="icon-button"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                @click="toggleShowPassword"
+              >
+                <span class="icon">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>
           </div>
+
           <div class="remember-me">
             <div class="toggle-switch">
               <input type="checkbox" />
@@ -55,18 +92,37 @@
             </div>
             <span>Remember device</span>
           </div>
+
           <div class="actions">
-            <button type="submit">Login</button>
+            <button
+              type="submit"
+              class="primary-button"
+              :class="{
+                'is-hover': isHoveringLogin,
+                'is-loading': isLoggingIn
+              }"
+              :disabled="isLoggingIn"
+              @mouseenter="onLoginEnter"
+              @mouseleave="onLoginLeave"
+            >
+              <span v-if="!isLoggingIn">Login</span>
+              <span v-else>Authenticating...</span>
+            </button>
           </div>
         </form>
+
         <div class="sso-divider">
           <div class="line"></div>
           <span>Or continue with</span>
           <div class="line"></div>
         </div>
+
         <div class="sso-buttons">
           <button>
-            <img alt="Google logo icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZraQLEja8plyQCCa5yetTP_cFOxzf64UdGJxy2XT6R6VAu77keVgRihM8FHV1Osq0mdrVHdssMNhC29ex1rVY3bLKI_QLLhZFIvxM1oEc_g2F7HXK38-zg8mbu6RrP_g0DzeP-M0TM6HESOBGKZN7go772_qXWcMQ2TB1BeeHvTUMkgt8FPMAcxu3ZMdSJt8rc5Xy-31S3zd5-09fpzaAp79aUGl7s5L0ngTIBpaTrWUjZ7iwMU8GASd_m_gkLTbc5jwVNLxpMJE"/>
+            <img
+              alt="Google logo icon"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZraQLEja8plyQCCa5yetTP_cFOxzf64UdGJxy2XT6R6VAu77keVgRihM8FHV1Osq0mdrVHdssMNhC29ex1rVY3bLKI_QLLhZFIvxM1oEc_g2F7HXK38-zg8mbu6RrP_g0DzeP-M0TM6HESOBGKZN7go772_qXWcMQ2TB1BeeHvTUMkgt8FPMAcxu3ZMdSJt8rc5Xy-31S3zd5-09fpzaAp79aUGl7s5L0ngTIBpaTrWUjZ7iwMU8GASd_m_gkLTbc5jwVNLxpMJE"
+            />
             <span>Google</span>
           </button>
           <button>
@@ -74,6 +130,7 @@
             <span>Biometrics</span>
           </button>
         </div>
+
         <div class="signup-link">
           <p>New to the platform? <a href="/register">Join the community</a></p>
         </div>
@@ -87,6 +144,43 @@
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const email = ref('')
+const password = ref('')
+const isLoggingIn = ref(false)
+
+const showPassword = ref(false)
+
+const isHoveringLogin = ref(false)
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+const toggleShowPassword = () => {
+  showPassword.value = !showPassword.value
+}
+
+const onLoginEnter = () => {
+  if (!isLoggingIn.value) isHoveringLogin.value = true
+}
+const onLoginLeave = () => {
+  isHoveringLogin.value = false
+}
+
+const handleLogin = async () => {
+  if (isLoggingIn.value) return
+
+  isLoggingIn.value = true
+  try {
+    await sleep(1200)
+  } finally {
+    isLoggingIn.value = false
+    isHoveringLogin.value = false
+  }
+}
+</script>
 
 <style scoped>
 /* General Styles */
@@ -118,7 +212,6 @@
 }
 
 .left-section .logo {
-  font-family: 'Raleway', sans-serif;
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
@@ -130,7 +223,6 @@
 }
 
 .left-section h1 {
-  font-family: 'Raleway', sans-serif;
   font-size: 3.75rem;
   font-weight: 800;
   line-height: 1.1;
@@ -154,13 +246,26 @@
 .avatars {
   display: flex;
   margin-left: -0.75rem;
+  align-items: center;
 }
 
-.avatars img {
+.avatar-icon {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 9999px;
   border: 2px solid #0545ef;
+  background: rgba(255, 255, 255, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.75rem; /* cancels the -0.75rem container shift visually */
+}
+
+.avatar-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  fill: #f2f1ff;
+  opacity: 0.95;
 }
 
 .avatar-plus {
@@ -175,6 +280,7 @@
   font-size: 0.625rem;
   font-weight: 700;
   color: #001867;
+  margin-left: 0.75rem;
 }
 
 .social-proof p {
@@ -202,7 +308,6 @@
   display: flex;
   justify-content: center;
   margin-bottom: 3rem;
-  font-family: 'Raleway', sans-serif;
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.05em;
@@ -215,7 +320,6 @@
 }
 
 .form-header h2 {
-  font-family: 'Raleway', sans-serif;
   font-size: 1.875rem;
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -277,19 +381,20 @@
   transition: color 0.2s;
 }
 
-.input-with-icon input:focus + .icon {
+.input-with-icon:focus-within .icon {
   color: #0545ef;
 }
 
 .input-with-icon input {
   width: 100%;
-  padding: 1rem 3rem 1rem 3rem;
+  /* Slightly more right padding so the eye button sits *inside* without overlapping text */
+  padding: 1rem 3.25rem 1rem 3rem;
   background-color: #eef1f3;
   border: none;
   border-radius: 1rem;
   color: #2c2f31;
   outline: none;
-  transition: all 0.2s;
+  transition: box-shadow 0.2s, background-color 0.2s;
 }
 
 .input-with-icon input::placeholder {
@@ -303,14 +408,21 @@
 
 .icon-button {
   position: absolute;
-  right: 1rem;
-  background: none;
+  right: 0.9rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: transparent;
   border: none;
   cursor: pointer;
   color: #abadaf;
 }
 .icon-button:hover {
   color: #595c5e;
+  background: rgba(171, 173, 175, 0.12);
 }
 
 .remember-me {
@@ -342,19 +454,19 @@
   bottom: 0;
   background-color: #d9dde0;
   border-radius: 9999px;
-  transition: 0.4s;
+  transition: 0.25s ease;
 }
 
 .slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 1rem;
   width: 1rem;
   left: 2px;
   bottom: 2px;
   background-color: white;
   border-radius: 50%;
-  transition: 0.4s;
+  transition: 0.25s ease;
 }
 
 input:checked + .slider {
@@ -375,28 +487,77 @@ input:checked + .slider:before {
   padding-top: 1rem;
 }
 
-.actions button {
+/* Smooth, manually-controlled primary button animation:
+   - default: pill
+   - hover: via .is-hover (set by mouseenter/mouseleave)
+   - loading: morphs into rounded-rectangle smoothly
+*/
+.primary-button {
   width: 100%;
   background-color: #0545ef;
   color: #f2f1ff;
-  padding: 1rem;
-  border-radius: 9999px;
-  font-family: 'Raleway', sans-serif;
+  padding: 0.9rem 1rem;
+  border-radius: 9999px; /* pill */
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: 1rem;
   border: none;
   cursor: pointer;
-  transition: border-radius 0.3s ease-in-out, background-color 0.3s ease-in-out;
+
+  /* GPU-friendly transitions */
+  transform: translateZ(0);
+  will-change: transform, box-shadow, border-radius;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 220ms ease,
+    border-radius 420ms cubic-bezier(0.2, 0.9, 0.2, 1),
+    filter 180ms ease;
+
   box-shadow: 0 12px 24px -8px rgba(5, 69, 239, 0.3);
 }
 
-.actions button:hover {
+.primary-button.is-hover {
   background-color: #003bd4;
-  border-radius: 1rem;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px -10px rgba(5, 69, 239, 0.35);
 }
 
-.actions button:active {
-  transform: scale(0.98);
+.primary-button:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+.primary-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(5, 69, 239, 0.25),
+    0 16px 28px -10px rgba(5, 69, 239, 0.35);
+}
+
+/* "Logging in" state: morph pill -> rounded-rectangle smoothly */
+.primary-button.is-loading,
+.primary-button:disabled {
+  cursor: not-allowed;
+  background-color: #595c5e;
+  border-radius: 1rem; /* less pill, more long rounded corners */
+  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+  transform: none;
+  filter: saturate(0.9);
+}
+
+/* Safety: if hover class sticks during loading, keep loading visuals */
+.primary-button.is-loading.is-hover {
+  background-color: #595c5e;
+  transform: none;
+  box-shadow: 0 12px 18px -10px rgba(44, 47, 49, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button {
+    transition: background-color 180ms ease, box-shadow 220ms ease, border-radius 250ms ease;
+  }
+  .primary-button.is-hover {
+    transform: none;
+  }
 }
 
 .sso-divider {
@@ -542,8 +703,8 @@ input:checked + .slider:before {
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
+  font-feature-settings: 'liga';
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
 </style>
-
