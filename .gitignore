@@ -1,0 +1,79 @@
+# -------------------------------
+# Global OS / editor noise
+# -------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# -------------------------------
+# Logs / temp
+# -------------------------------
+*.log
+logs/
+tmp/
+temp/
+
+# -------------------------------
+# Secrets and environment files
+# -------------------------------
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.asc
+*.gpg
+*.kdbx
+*.secret
+secrets/
+**/secrets/**
+
+# -------------------------------
+# Python
+# -------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+*.sqlite3
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+**/.venv/
+**/venv/
+
+# -------------------------------
+# Node / Nuxt
+# -------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.nuxt/
+.output/
+dist/
+coverage/
+
+# -------------------------------
+# Tooling
+# -------------------------------
+.vscode/settings.json
