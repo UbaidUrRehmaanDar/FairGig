@@ -597,28 +597,6 @@ const handleRegister = async () => {
   margin: 0;
 }
 
-terms-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #595c5e;
-  line-height: 1.35;
-  cursor: pointer;
-  margin: 0;
-}
-
-.terms-label a {
-  color: #0545ef;
-  font-weight: 700;
-  text-decoration: none;
-}
-.terms-label a:hover {
-  text-decoration: underline;
-}
-
-.terms-error {
-  margin-top: -0.5rem;
-}
-
 .terms-row a {
   color: #0545ef;
   font-weight: 700;
