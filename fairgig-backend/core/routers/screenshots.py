@@ -1,8 +1,12 @@
 import os
-from datetime import datetime
+import re
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Literal, Optional
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -10,7 +14,7 @@ from pydantic import BaseModel
 try:
     from supabase import Client, create_client
 except Exception:
-    # Keep core API bootable even if optional storage dependency is missing.
+    # Keep API bootable even when SDK import is unavailable.
     Client = Any
     create_client = None
 
@@ -26,7 +30,10 @@ SHIFT_STATUS_BY_SCREENSHOT_STATUS = {
     "unverifiable": "unverified",
 }
 
-_supabase_client: Optional[Client] = None
+_supabase_client: Optional[Any] = None
+SUPABASE_SDK_KEY_PATTERN = re.compile(
+    r"^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$"
+)
 
 
 class ScreenshotReviewIn(BaseModel):
@@ -34,26 +41,89 @@ class ScreenshotReviewIn(BaseModel):
     note: str = ""
 
 
-def get_supabase_client() -> Client:
-    global _supabase_client
-    if create_client is None:
+def _get_storage_credentials() -> tuple[str, str]:
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
+    service_key = (
+        os.getenv("SUPABASE_SERVICE_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or os.getenv("SUPABASE_ANON_KEY")
+        or ""
+    ).strip()
+
+    if not supabase_url or not service_key:
         raise HTTPException(
-            status_code=503,
-            detail=(
-                "Screenshot storage dependency missing. "
-                "Install backend package 'supabase' to enable screenshot upload/view."
-            ),
+            status_code=500,
+            detail="Supabase storage is not configured",
         )
 
+    return supabase_url, service_key
+
+
+def _storage_headers(api_key: str, content_type: Optional[str] = None) -> dict[str, str]:
+    headers = {
+        "apikey": api_key,
+        "Authorization": f"Bearer {api_key}",
+    }
+    if content_type:
+        headers["Content-Type"] = content_type
+    return headers
+
+
+def _response_detail(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        text = (response.text or "").strip()
+        return text or f"HTTP {response.status_code}"
+
+    if isinstance(payload, dict):
+        for key in ("detail", "message", "msg", "error"):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+    return str(payload)
+
+
+def _is_sdk_compatible_key(api_key: str) -> bool:
+    return bool(SUPABASE_SDK_KEY_PATTERN.match(api_key))
+
+
+def get_supabase_client() -> Any:
+    global _supabase_client, create_client, Client
+    if create_client is None:
+        try:
+            from supabase import Client as SupabaseClient, create_client as supabase_create_client
+
+            Client = SupabaseClient
+            create_client = supabase_create_client
+        except Exception:
+            try:
+                from supabase.client import Client as SupabaseClient, create_client as supabase_create_client
+
+                Client = SupabaseClient
+                create_client = supabase_create_client
+            except Exception:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Screenshot storage dependency missing. "
+                        "Install backend package 'supabase' to enable screenshot upload/view."
+                    ),
+                )
+
     if _supabase_client is None:
-        supabase_url = (os.getenv("SUPABASE_URL") or "").strip()
-        service_key = (os.getenv("SUPABASE_SERVICE_KEY") or "").strip()
-        if not supabase_url or not service_key:
+        supabase_url, service_key = _get_storage_credentials()
+        try:
+            _supabase_client = create_client(supabase_url, service_key)
+        except Exception as exc:
             raise HTTPException(
-                status_code=500,
-                detail="Supabase storage is not configured",
-            )
-        _supabase_client = create_client(supabase_url, service_key)
+                status_code=503,
+                detail=(
+                    "Supabase storage key is incompatible with the Python SDK. "
+                    "Provide a JWT-format service role key or use REST fallback mode."
+                ),
+            ) from exc
     return _supabase_client
 
 
@@ -63,11 +133,11 @@ def _get_bucket_name() -> str:
 
 def _extract_signed_url(value: Any) -> Optional[str]:
     if isinstance(value, dict):
-        return value.get("signedURL") or value.get("signedUrl")
+        return value.get("signedURL") or value.get("signedUrl") or value.get("signed_url")
 
     data = getattr(value, "data", None)
     if isinstance(data, dict):
-        return data.get("signedURL") or data.get("signedUrl")
+        return data.get("signedURL") or data.get("signedUrl") or data.get("signed_url")
 
     return None
 
@@ -81,6 +151,129 @@ def _to_absolute_signed_url(signed_url: str) -> str:
         return f"{supabase_url}/storage/v1{signed_url}"
 
     return signed_url
+
+
+async def _upload_to_storage_via_rest(
+    *,
+    supabase_url: str,
+    service_key: str,
+    bucket: str,
+    storage_path: str,
+    content: bytes,
+    content_type: str,
+) -> None:
+    encoded_bucket = quote(bucket, safe="")
+    encoded_path = quote(storage_path, safe="/")
+    endpoint = f"{supabase_url}/storage/v1/object/{encoded_bucket}/{encoded_path}"
+
+    headers = _storage_headers(service_key, content_type)
+    headers["x-upsert"] = "false"
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.post(endpoint, headers=headers, content=content)
+
+    if response.status_code not in {200, 201}:
+        detail = _response_detail(response)
+        raise HTTPException(status_code=502, detail=f"Failed to upload to storage: {detail}")
+
+
+async def _create_signed_url_via_rest(
+    *,
+    supabase_url: str,
+    service_key: str,
+    bucket: str,
+    storage_path: str,
+    expires_in: int,
+) -> str:
+    encoded_bucket = quote(bucket, safe="")
+    encoded_path = quote(storage_path, safe="/")
+    endpoint = f"{supabase_url}/storage/v1/object/sign/{encoded_bucket}/{encoded_path}"
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.post(
+            endpoint,
+            headers=_storage_headers(service_key, "application/json"),
+            json={"expiresIn": expires_in},
+        )
+
+    if response.status_code not in {200, 201}:
+        detail = _response_detail(response)
+        raise HTTPException(status_code=502, detail=f"Could not generate access link: {detail}")
+
+    payload = response.json()
+    signed_url = _extract_signed_url(payload)
+    if not signed_url:
+        raise HTTPException(status_code=502, detail="Could not generate access link")
+
+    return _to_absolute_signed_url(signed_url)
+
+
+async def _upload_to_storage(storage_path: str, content: bytes, content_type: str) -> None:
+    bucket = _get_bucket_name()
+    supabase_url, service_key = _get_storage_credentials()
+
+    if _is_sdk_compatible_key(service_key):
+        try:
+            storage = get_supabase_client().storage.from_(bucket)
+            storage.upload(
+                storage_path,
+                content,
+                {"content-type": content_type},
+            )
+            return
+        except HTTPException:
+            pass
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="Failed to upload to storage") from exc
+
+    await _upload_to_storage_via_rest(
+        supabase_url=supabase_url,
+        service_key=service_key,
+        bucket=bucket,
+        storage_path=storage_path,
+        content=content,
+        content_type=content_type,
+    )
+
+
+async def _create_signed_url(storage_path: str, expires_in: int) -> str:
+    bucket = _get_bucket_name()
+    supabase_url, service_key = _get_storage_credentials()
+
+    if _is_sdk_compatible_key(service_key):
+        try:
+            storage = get_supabase_client().storage.from_(bucket)
+            signed_result = storage.create_signed_url(storage_path, expires_in)
+            signed_url = _extract_signed_url(signed_result)
+            if not signed_url:
+                raise HTTPException(status_code=502, detail="Could not generate access link")
+            return _to_absolute_signed_url(signed_url)
+        except HTTPException:
+            pass
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Could not generate access link: {exc}") from exc
+
+    return await _create_signed_url_via_rest(
+        supabase_url=supabase_url,
+        service_key=service_key,
+        bucket=bucket,
+        storage_path=storage_path,
+        expires_in=expires_in,
+    )
+
+
+def _to_json_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    if isinstance(value, UUID):
+        return str(value)
+    return value
+
+
+def _serialize_record(record: Any) -> dict:
+    return {key: _to_json_value(record[key]) for key in record.keys()}
 
 
 @router.post("/upload/{shift_id}")
@@ -111,15 +304,11 @@ async def upload_screenshot(
     extension = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
     storage_path = f"screenshots/{user['id']}/{shift_id}/{uuid4()}.{extension}"
 
-    storage = get_supabase_client().storage.from_(_get_bucket_name())
-    try:
-        storage.upload(
-            storage_path,
-            content,
-            {"content-type": file.content_type or "application/octet-stream"},
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail="Failed to upload to storage") from exc
+    await _upload_to_storage(
+        storage_path,
+        content,
+        file.content_type or "application/octet-stream",
+    )
 
     screenshot = await pool.fetchrow(
         """
@@ -164,6 +353,9 @@ async def pending_screenshots(user=Depends(require_role("verifier", "advocate"))
             es.created_at,
             s.platform,
             s.shift_date,
+            s.hours_worked,
+            s.gross_earned,
+            s.platform_deductions,
             s.net_received,
             p.full_name,
             p.city_zone
@@ -176,7 +368,27 @@ async def pending_screenshots(user=Depends(require_role("verifier", "advocate"))
         """
     )
 
-    return [dict(row) for row in rows]
+    previews_enabled = True
+    try:
+        _get_storage_credentials()
+    except HTTPException:
+        previews_enabled = False
+
+    result = []
+    for row in rows:
+        item = _serialize_record(row)
+        item["signed_preview_url"] = None
+
+        storage_path = str(item.get("storage_path") or "").strip()
+        if previews_enabled and storage_path:
+            try:
+                item["signed_preview_url"] = await _create_signed_url(storage_path, 300)
+            except Exception:
+                item["signed_preview_url"] = None
+
+        result.append(item)
+
+    return result
 
 
 @router.patch("/{screenshot_id}/review")
@@ -262,23 +474,9 @@ async def view_screenshot(
     if not is_privileged and not is_owner:
         raise HTTPException(status_code=403, detail="Cannot view screenshot for another worker")
 
-    bucket = _get_bucket_name()
-    storage = get_supabase_client().storage.from_(bucket)
     expires_in = 60
-
-    try:
-        signed_result = storage.create_signed_url(
-            screenshot["storage_path"],
-            expires_in,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Could not generate access link: {exc}") from exc
-
-    signed_url = _extract_signed_url(signed_result)
-    if not signed_url:
-        raise HTTPException(status_code=502, detail="Could not generate access link")
-
-    signed_url = _to_absolute_signed_url(signed_url)
+    bucket = _get_bucket_name()
+    signed_url = await _create_signed_url(str(screenshot["storage_path"]), expires_in)
 
     if redirect:
         return RedirectResponse(url=signed_url, status_code=307)

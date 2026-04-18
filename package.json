@@ -1,0 +1,10 @@
+{
+  "name": "fairgig",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix fairgig-frontend run dev",
+    "build": "npm --prefix fairgig-frontend run build",
+    "dev:frontend": "npm --prefix fairgig-frontend run dev",
+    "build:frontend": "npm --prefix fairgig-frontend run build"
+  }
+}

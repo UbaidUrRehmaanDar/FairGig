@@ -51,11 +51,7 @@ export const useShiftsStore = defineStore('shifts', () => {
     shiftsError.value = ''
     try {
       const data = await authFetch<ShiftRecord[]>('/shifts')
-      const rows = Array.isArray(data) ? data : []
-      const currentUserId = await getCurrentUserId()
-      shifts.value = currentUserId
-        ? rows.filter((row) => String(row.worker_id || '').trim() === currentUserId)
-        : rows
+      shifts.value = Array.isArray(data) ? data : []
       return shifts.value
     } catch (error: any) {
       shifts.value = []
