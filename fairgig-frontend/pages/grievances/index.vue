@@ -106,15 +106,14 @@ definePageMeta({ middleware: 'auth' as any })
 
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useApi } from '../../composables/useApi'
+import { useGrievancesStore } from '../../stores/grievances'
 import { useAuthStore } from '../../stores/auth'
 
-const { authFetch } = useApi()
+const grievancesStore = useGrievancesStore()
 const authStore = useAuthStore()
-const { role } = storeToRefs(authStore)
 
-const grievances = ref<any[]>([])
-const loading = ref(false)
+const { items: grievances, loading } = storeToRefs(grievancesStore)
+const { role } = storeToRefs(authStore)
 
 const filterPlatform = ref('')
 const filterCategory = ref('')
@@ -132,30 +131,22 @@ const formatDate = (d: string) => {
 }
 
 const load = async () => {
-  loading.value = true
-  try {
-    const params = new URLSearchParams()
-    if (filterPlatform.value) params.set('platform', filterPlatform.value)
-    if (filterCategory.value) params.set('category', filterCategory.value)
-    if (filterStatus.value) params.set('status', filterStatus.value)
-
-    const qs = params.toString()
-    grievances.value = await authFetch(`/grievances${qs ? `?${qs}` : ''}`)
-  } finally {
-    loading.value = false
-  }
+  await grievancesStore.fetch({
+    platform: filterPlatform.value,
+    category: filterCategory.value,
+    status: filterStatus.value
+  })
 }
 
 const upvote = async (id: string) => {
-  await authFetch(`/grievances/${id}/upvote`, { method: 'POST' })
-  await load()
+  await grievancesStore.upvote(id)
 }
 
 const escalate = async (id: string) => {
-  await authFetch(`/grievances/${id}/escalate`, { method: 'PATCH' })
-  await load()
+  await grievancesStore.escalate(id)
 }
 
+await authStore.refreshSession()
 await load()
 </script>
 

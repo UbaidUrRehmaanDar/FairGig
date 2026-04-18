@@ -60,9 +60,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { navigateTo } from 'nuxt/app'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useSupabaseClient } from '#imports'
 
-const authStore = useAuthStore()
+import { useApi } from '../composables/useApi'
+
+const supabase = useSupabaseClient()
+const { authFetch } = useApi()
 const isBusy = ref(true)
 const status = ref<'pending' | 'success' | 'error'>('pending')
 const statusMessage = ref('Please wait while we verify your confirmation link.')
@@ -72,6 +75,59 @@ const roleToPath = (role: string) => {
   if (role === 'advocate') return '/dashboard/advocate'
   if (role === 'verifier') return '/dashboard/verifier'
   return '/dashboard/worker'
+}
+
+const resolveRole = (user: any) => {
+  const candidate =
+    (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
+    (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
+    'worker'
+
+  const normalized = String(candidate).toLowerCase().trim()
+  if (normalized === 'advocate') return 'advocate'
+  if (normalized === 'verifier') return 'verifier'
+  return 'worker'
+}
+
+const fallbackNameFromEmail = (emailValue: string) => {
+  const localPart = String(emailValue || '').split('@')[0] || 'Worker'
+  return localPart
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const ensureProfile = async (user: any, role: string) => {
+  const fullName =
+    String(user?.user_metadata?.full_name || '').trim() ||
+    fallbackNameFromEmail(String(user?.email || '').trim())
+
+  try {
+    await authFetch('/auth/setup-profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        full_name: fullName,
+        city_zone: String(user?.user_metadata?.city_zone || 'Unknown'),
+        platform_category: String(user?.user_metadata?.platform_category || 'ride_hailing'),
+        role
+      })
+    })
+  } catch {
+    // Keep confirmation flow non-blocking if profile setup temporarily fails.
+  }
+}
+
+const waitForSessionUser = async () => {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const { data } = await supabase.auth.getSession()
+    if (data.session?.user) {
+      return data.session.user
+    }
+    if (attempt < 5) {
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+  }
+  return null
 }
 
 const statusLabel = computed(() => {
@@ -109,12 +165,17 @@ onMounted(async () => {
 
     await new Promise((resolve) => setTimeout(resolve, 900))
 
-    const user = authStore.user
-    if (user || hasTokenLikeParams) {
-      const role = authStore.role || 'worker'
+    const user = await waitForSessionUser()
+    if (user) {
+      const role = resolveRole(user)
+      await ensureProfile(user, role)
       redirectPath.value = roleToPath(role)
       status.value = 'success'
       statusMessage.value = 'Your account is confirmed. You can continue now.'
+    } else if (hasTokenLikeParams) {
+      status.value = 'error'
+      statusMessage.value = 'Could not establish a confirmed session from this link. Please try logging in again.'
+      redirectPath.value = '/login'
     } else {
       status.value = 'error'
       statusMessage.value = 'Confirmation link is invalid or expired. Please log in again.'

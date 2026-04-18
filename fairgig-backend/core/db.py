@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 import asyncpg
 from dotenv import load_dotenv
 
-load_dotenv()
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(BACKEND_ROOT / ".env")
 
 _pool: Optional[asyncpg.Pool] = None
 

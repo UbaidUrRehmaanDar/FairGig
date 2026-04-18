@@ -41,13 +41,19 @@
         </div>
 
         <div v-else class="flag-list">
-          <article class="flag-card" v-for="flag in kpis.vulnerability_flags" :key="flag.worker_id">
+          <article
+            class="flag-card"
+            v-for="flag in kpis.vulnerability_flags"
+            :key="`${flag.worker_id}-${flag.shift_date}-${flag.platform}`"
+          >
             <div class="flag-top">
-              <strong>Worker {{ shortId(flag.worker_id) }}</strong>
-              <span class="drop-pill">↓ {{ flag.drop_pct }}%</span>
+              <strong>{{ flag.full_name || `Worker ${shortId(flag.worker_id)}` }}</strong>
+              <span class="drop-pill">↓ {{ formatPct(flag.income_drop_pct) }}%</span>
             </div>
-            <p>This month: PKR {{ formatNum(flag.this_month) }}</p>
-            <p>Last month: PKR {{ formatNum(flag.last_month) }}</p>
+            <p>{{ flag.city_zone || 'Unknown zone' }} • {{ flag.platform || 'Unknown platform' }}</p>
+            <p>Shift date: {{ formatDate(flag.shift_date) }}</p>
+            <p>Previous net: PKR {{ formatNum(flag.prev_net_received) }}</p>
+            <p>Current net: PKR {{ formatNum(flag.net_received) }}</p>
           </article>
         </div>
       </section>
@@ -67,15 +73,15 @@
           <table>
             <thead>
               <tr>
-                <th>Platform</th>
-                <th>Month</th>
+                <th>Shift Date</th>
+                <th>Sample Size</th>
                 <th>Avg Commission %</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in kpis.commission_trends" :key="`${t.platform}-${t.month}`">
-                <td>{{ t.platform }}</td>
-                <td>{{ formatMonth(t.month) }}</td>
+              <tr v-for="t in kpis.commission_trends" :key="t.shift_date">
+                <td>{{ formatDate(t.shift_date) }}</td>
+                <td>{{ Number(t.sample_size || 0) }}</td>
                 <td :class="{ high: Number(t.avg_commission_pct) > 25 }">
                   {{ Number(t.avg_commission_pct || 0).toFixed(1) }}%
                 </td>
@@ -98,8 +104,10 @@
           <div v-else class="zone-grid">
             <article class="zone-card" v-for="zone in kpis.income_by_zone" :key="zone.city_zone">
               <h3>{{ zone.city_zone }}</h3>
-              <p>Avg Net: <strong>PKR {{ formatNum(zone.avg_net) }}</strong></p>
-              <p>Workers: <strong>{{ zone.workers }}</strong></p>
+              <p>Total Net: <strong>PKR {{ formatNum(zone.total_net_received) }}</strong></p>
+              <p>Avg Net: <strong>PKR {{ formatNum(zone.avg_net_received) }}</strong></p>
+              <p>Workers: <strong>{{ Number(zone.worker_count || 0) }}</strong></p>
+              <p>Samples: <strong>{{ Number(zone.sample_size || 0) }}</strong></p>
             </article>
           </div>
         </div>
@@ -116,11 +124,11 @@
             <article
               class="complaint-row"
               v-for="c in kpis.top_complaints"
-              :key="`${c.category}-${c.platform}`"
+              :key="c.category"
             >
-              <span class="platform">{{ c.platform }}</span>
-              <span class="category">{{ c.category }}</span>
-              <span class="count">{{ c.count }} reports</span>
+              <span class="platform">{{ c.category }}</span>
+              <span class="category">{{ Number(c.total_upvotes || 0) }} upvotes</span>
+              <span class="count">{{ Number(c.total_count || 0) }} reports • {{ Number(c.total_upvotes || 0) }} upvotes</span>
             </article>
           </div>
         </div>
@@ -138,13 +146,12 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' as any })
 
-import { ref } from 'vue'
-import { useApi } from '../../composables/useApi'
+import { storeToRefs } from 'pinia'
 
-const { authFetch } = useApi()
+import { useAnalyticsStore } from '../../stores/analytics'
 
-const loading = ref(false)
-const kpis = ref<any>(null)
+const analyticsStore = useAnalyticsStore()
+const { loading, kpis } = storeToRefs(analyticsStore)
 
 const shortId = (value?: string) => {
   const v = String(value || '')
@@ -158,16 +165,19 @@ const formatNum = (n: number | string | null | undefined) => {
   return Math.round(num).toLocaleString('en-PK')
 }
 
-const formatMonth = (d: string) =>
-  new Date(d).toLocaleDateString('en-PK', { month: 'short', year: 'numeric' })
+const formatDate = (d: string) => {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-PK')
+}
+
+const formatPct = (n: number | string | null | undefined) => {
+  const value = Number(n || 0)
+  if (!Number.isFinite(value)) return '0.0'
+  return value.toFixed(1)
+}
 
 const loadKpis = async () => {
-  loading.value = true
-  try {
-    kpis.value = await authFetch('/analytics/kpis')
-  } finally {
-    loading.value = false
-  }
+  await analyticsStore.fetchKPIs()
 }
 
 await loadKpis()

@@ -188,8 +188,10 @@
 import { onMounted, ref } from 'vue'
 import { navigateTo } from 'nuxt/app'
 import { useSupabaseClient } from '#imports'
+import { useApi } from '../composables/useApi'
 
 const supabase = useSupabaseClient()
+const { authFetch } = useApi()
 
 const fullName = ref('')
 const email = ref('')
@@ -305,6 +307,33 @@ const isAlreadyRegisteredError = (error: any) => {
   )
 }
 
+const fallbackNameFromEmail = (emailValue: string) => {
+  const localPart = String(emailValue || '').split('@')[0] || 'Worker'
+  return localPart
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const ensureWorkerProfile = async () => {
+  const normalizedName =
+    String(fullName.value || '').trim() || fallbackNameFromEmail(String(email.value || '').trim())
+
+  try {
+    await authFetch('/auth/setup-profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        full_name: normalizedName,
+        city_zone: 'Unknown',
+        platform_category: 'ride_hailing',
+        role: 'worker'
+      })
+    })
+  } catch {
+    // Do not block auth flow if profile bootstrap fails; user can retry later.
+  }
+}
+
 const handleRegister = async () => {
   if (isRegistering.value) return
 
@@ -334,6 +363,7 @@ const handleRegister = async () => {
         })
 
         if (!signInError && signInData.user) {
+          await ensureWorkerProfile()
           statusType.value = 'success'
           statusMessage.value = 'Account already exists. Signed in successfully.'
           await navigateTo('/dashboard/worker')
@@ -362,6 +392,7 @@ const handleRegister = async () => {
     statusType.value = 'success'
 
     if (data.session?.user) {
+      await ensureWorkerProfile()
       statusMessage.value = 'Account created successfully.'
       await navigateTo('/dashboard/worker')
       return

@@ -163,11 +163,10 @@ definePageMeta({ middleware: 'auth' as any })
 
 import { onMounted, reactive, ref } from 'vue'
 import { useShiftsStore } from '../../stores/shifts'
-import { useRuntimeConfig, useSupabaseClient } from '#imports'
+import { useApi } from '../../composables/useApi'
 
 const shiftsStore = useShiftsStore()
-const supabase = useSupabaseClient()
-const config = useRuntimeConfig()
+const { authFetch } = useApi()
 
 const platforms = ['Careem', 'InDrive', 'Bykea', 'Foodpanda', 'Cheetay', 'Other']
 
@@ -283,18 +282,12 @@ const uploadScreenshot = async () => {
   isUploading.value = true
 
   try {
-    const { data } = await supabase.auth.getSession()
-    const token = data.session?.access_token
-
     const fd = new FormData()
     fd.append('file', selectedFile.value)
 
-    await $fetch(`${config.public.apiBase}/screenshots/upload/${lastShiftId.value}`, {
+    await authFetch(`/screenshots/upload/${lastShiftId.value}`, {
       method: 'POST',
-      body: fd,
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      body: fd
     })
 
     messageType.value = 'success'
