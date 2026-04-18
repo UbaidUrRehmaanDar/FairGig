@@ -20,13 +20,13 @@
 ## Phase 2 — Shifts & Screenshots
 > Complete worker earnings CRUD + file upload
 
-- [ ] `POST /shifts` inserts shift row, returns `shift_id`
-- [ ] `GET /shifts` returns worker's own shifts (RLS enforced)
-- [ ] `GET /shifts/summary` returns this_month, this_week, avg_hourly, avg_commission_pct
-- [ ] `GET /shifts/city-median?platform=` returns median from materialized view
-- [ ] `POST /screenshots/upload/{shift_id}` uploads file to Supabase Storage
-- [ ] `GET /screenshots/pending` returns pending queue (verifier/advocate only)
-- [ ] `PATCH /screenshots/{id}/review` updates screenshot + parent shift status
+- [x] `POST /shifts` inserts shift row, returns `shift_id`
+- [x] `GET /shifts` returns worker's own shifts (RLS enforced)
+- [x] `GET /shifts/summary` returns this_month, this_week, avg_hourly, avg_commission_pct
+- [x] `GET /shifts/city-median?platform=` returns median from materialized view
+- [x] `POST /screenshots/upload/{shift_id}` uploads file to Supabase Storage
+- [x] `GET /screenshots/pending` returns pending queue (verifier/advocate only)
+- [x] `PATCH /screenshots/{id}/review` updates screenshot + parent shift status
 
 **✅ Gate: POST a shift via Postman → GET /shifts returns it → upload a screenshot → GET /screenshots/pending shows it.**
 
