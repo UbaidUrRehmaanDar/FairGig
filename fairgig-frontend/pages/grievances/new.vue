@@ -105,9 +105,9 @@ definePageMeta({ middleware: 'auth' as any })
 
 import { reactive, ref } from 'vue'
 import { navigateTo } from 'nuxt/app'
-import { useApi } from '../../composables/useApi'
+import { useGrievancesStore } from '../../stores/grievances'
 
-const { authFetch } = useApi()
+const grievancesStore = useGrievancesStore()
 
 const platforms = ['Careem', 'InDrive', 'Bykea', 'Foodpanda', 'Cheetay', 'Other']
 
@@ -159,15 +159,12 @@ const submit = async () => {
 
   isSubmitting.value = true
   try {
-    await authFetch('/grievances', {
-      method: 'POST',
-      body: {
-        platform: form.platform,
-        category: form.category,
-        title: form.title,
-        description: form.description,
-        tags
-      }
+    await grievancesStore.create({
+      platform: form.platform,
+      category: form.category,
+      title: form.title,
+      description: form.description,
+      tags
     })
 
     messageType.value = 'success'

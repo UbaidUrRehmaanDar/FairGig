@@ -59,9 +59,8 @@
 
               <a
                 class="preview-link"
-                :href="toPublicUrl(item.storage_path)"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#"
+                @click.prevent="openScreenshot(item.id)"
               >
                 Open Image
               </a>
@@ -122,7 +121,6 @@
 definePageMeta({ middleware: 'auth' as any })
 
 import { computed, reactive, ref } from 'vue'
-import { useRuntimeConfig } from '#imports'
 import { useApi } from '../../composables/useApi'
 
 type PendingItem = {
@@ -135,7 +133,6 @@ type PendingItem = {
 }
 
 const { authFetch } = useApi()
-const config = useRuntimeConfig()
 
 const queue = ref<PendingItem[]>([])
 const isLoading = ref(false)
@@ -156,10 +153,24 @@ const shortId = (v?: string) => {
   return `${s.slice(0, 8)}...`
 }
 
-const toPublicUrl = (storagePath: string) => {
-  // Adjust if your bucket URL strategy differs
-  const base = String(config.public?.apiBase || '').replace(/\/$/, '')
-  return `${base}/screenshots/file/${encodeURIComponent(storagePath)}`
+const openScreenshot = async (screenshotId: string) => {
+  message.value = ''
+  try {
+    const data = await authFetch<{ signed_url?: string }>(
+      `/screenshots/view/${encodeURIComponent(screenshotId)}?redirect=false`
+    )
+    const signedUrl = String(data?.signed_url || '').trim()
+    if (!signedUrl) {
+      throw new Error('Screenshot URL is unavailable.')
+    }
+
+    if (typeof window !== 'undefined') {
+      window.open(signedUrl, '_blank', 'noopener,noreferrer')
+    }
+  } catch (e: any) {
+    messageType.value = 'error'
+    message.value = e?.message || 'Failed to open screenshot.'
+  }
 }
 
 const loadPending = async () => {
@@ -182,9 +193,12 @@ const review = async (screenshotId: string, status: 'verified' | 'flagged' | 'un
 
   try {
     const note = notes[screenshotId] || ''
-    const qs = new URLSearchParams({ status, note }).toString()
-    await authFetch(`/screenshots/${screenshotId}/review?${qs}`, {
-      method: 'PATCH'
+    await authFetch(`/screenshots/${screenshotId}/review`, {
+      method: 'PATCH',
+      body: {
+        status,
+        note
+      }
     })
 
     reviewedCount.value += 1

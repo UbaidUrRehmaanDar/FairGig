@@ -3,6 +3,53 @@
 This document is for frontend developers integrating with the currently implemented backend.
 It covers all implemented backend phases, service setup, authentication, endpoint contracts, role requirements, and integration notes.
 
+## 0) Local Development Quick Start (Fresh Clone)
+
+Use this sequence when you start local integration testing from scratch.
+
+### 0.1 Start Core API (port 8000)
+
+```powershell
+cd fairgig-backend/core
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+If `python` alias is unavailable on Windows, use your explicit interpreter path.
+
+### 0.2 Start Anomaly API (port 8001)
+
+```powershell
+cd fairgig-backend/anomaly
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+### 0.3 Start Nuxt Frontend
+
+```powershell
+cd fairgig-frontend
+npm install
+npm run dev -- --port 3008
+```
+
+### 0.4 Verify Services Before UI Testing
+
+```powershell
+Invoke-WebRequest http://localhost:8000/health -UseBasicParsing
+Invoke-WebRequest http://localhost:8001/health -UseBasicParsing
+```
+
+### 0.5 Verify Core CORS Preflight for Current Frontend Port
+
+```powershell
+Invoke-WebRequest -Uri "http://localhost:8000/shifts" -Method Options -Headers @{
+  "Origin"="http://localhost:3008"
+  "Access-Control-Request-Method"="GET"
+  "Access-Control-Request-Headers"="authorization,content-type"
+} -UseBasicParsing
+```
+
+Expected result: HTTP `200` with `Access-Control-Allow-Origin` matching your frontend origin.
+
 ## 1) Services and Base URLs
 
 FairGig backend runs as two services:
@@ -32,6 +79,12 @@ The frontend should also be configured with Supabase client values:
 
 - `SUPABASE_URL`
 - `SUPABASE_KEY` or `SUPABASE_ANON_KEY`
+
+Nuxt runtime notes:
+
+- `NUXT_PUBLIC_API_BASE` overrides default `runtimeConfig.public.apiBase`.
+- `NUXT_PUBLIC_ANOMALY_BASE` overrides default `runtimeConfig.public.anomalyBase`.
+- Keep these aligned with your active local ports.
 
 ## 3) Authentication Contract
 
@@ -231,14 +284,32 @@ Success response:
 - Method: `GET`
 - URL: `/screenshots/pending`
 - Auth: `verifier` or `advocate`
-- Response: array of pending screenshot review rows
+- Response: array of pending screenshot review rows (includes shift + worker context)
+
+Example row:
+
+```json
+{
+  "id": "<screenshot_uuid>",
+  "shift_id": "<shift_uuid>",
+  "worker_id": "<worker_uuid>",
+  "storage_path": "screenshots/...",
+  "status": "pending",
+  "created_at": "2026-04-18T12:00:00+00:00",
+  "platform": "Careem",
+  "shift_date": "2026-04-18",
+  "net_received": 4100,
+  "full_name": "Worker Name",
+  "city_zone": "Gulberg"
+}
+```
 
 ### 4.9 Review Screenshot
 
 - Method: `PATCH`
 - URL: `/screenshots/{screenshot_id}/review`
 - Auth: `verifier` or `advocate`
-- Body:
+- Body (JSON request body, not query params):
 
 ```json
 {
@@ -272,6 +343,11 @@ Query option:
 
 - `?redirect=true` (default): 307 redirect to signed URL
 - `?redirect=false`: returns signed URL JSON
+
+Frontend recommendation:
+
+- Because this endpoint is protected by bearer auth, avoid opening `/screenshots/view/{id}` directly in a raw browser tab.
+- Use authenticated API call with `?redirect=false`, then open returned `signed_url`.
 
 JSON response when `redirect=false`:
 
@@ -314,8 +390,24 @@ JSON response when `redirect=false`:
 
 ```json
 {
-  "items": [],
-  "count": 0,
+  "items": [
+    {
+      "id": "<uuid>",
+      "worker_id": "<uuid>",
+      "platform": "Careem",
+      "category": "commission_change",
+      "title": "Commission increased",
+      "description": "Commission jumped this week",
+      "tags": ["commission", "urgent"],
+      "status": "open",
+      "upvotes": 7,
+      "created_at": "2026-04-18T12:00:00+00:00",
+      "updated_at": "2026-04-18T12:00:00+00:00",
+      "full_name": "Worker Name",
+      "city_zone": "Gulberg"
+    }
+  ],
+  "count": 1,
   "filters": {
     "platform": null,
     "category": null,
@@ -364,10 +456,52 @@ JSON response when `redirect=false`:
 - Auth: `advocate`
 - Response object contains four arrays:
 
-- `commission_trends`
-- `income_by_zone`
-- `vulnerability_flags`
-- `top_complaints`
+- `commission_trends` rows:
+
+```json
+{
+  "shift_date": "2026-04-18",
+  "avg_commission_pct": 21.5,
+  "sample_size": 45
+}
+```
+
+- `income_by_zone` rows:
+
+```json
+{
+  "city_zone": "Gulberg",
+  "total_net_received": 150000,
+  "avg_net_received": 4200,
+  "sample_size": 36,
+  "worker_count": 11
+}
+```
+
+- `vulnerability_flags` rows:
+
+```json
+{
+  "worker_id": "<uuid>",
+  "full_name": "Worker Name",
+  "city_zone": "Gulberg",
+  "platform": "Careem",
+  "shift_date": "2026-04-18",
+  "prev_net_received": 5000,
+  "net_received": 3700,
+  "income_drop_pct": 26.0
+}
+```
+
+- `top_complaints` rows:
+
+```json
+{
+  "category": "commission_change",
+  "total_count": 9,
+  "total_upvotes": 34
+}
+```
 
 ## Phase 4 - Anomaly Service
 
@@ -517,12 +651,15 @@ All currently implemented backend endpoints:
 ## 6) Frontend Integration Checklist
 
 - Initialize Supabase session flow first (login/confirm).
+- After first authenticated session, call `POST /auth/setup-profile` (or auto-bootstrap once) before worker actions.
 - Wrap all protected Core calls with `Authorization: Bearer <access_token>`.
 - Build role-aware UI routes:
   - worker: shifts, certificate, grievance create
   - verifier: screenshot pending + review
   - advocate: screenshot review + escalation + analytics
 - Use `multipart/form-data` only for screenshot upload endpoint.
+- For grievance board, read list from `response.items` (not top-level array).
+- For advocate KPIs, use exact backend fields (`shift_date`, `sample_size`, `income_drop_pct`, `total_count`, etc.).
 - Use `anomalyBase` for anomaly calls, not `apiBase`.
 - For certificate page:
   - always pass both `start_date` and `end_date`
@@ -535,8 +672,50 @@ All currently implemented backend endpoints:
 - `POST /grievances` and `POST /shifts` return clear `400` detail if worker profile is missing.
 - Screenshot view signed URLs expire quickly (`expires_in = 60`), so frontend should open immediately.
 - Anomaly endpoint is public by design for judge testing; no bearer token required.
+- Worker endpoints (`/shifts`, `/shifts/summary`) are user-scoped by authenticated `worker_id`.
 
-## 8) Quick Postman Smoke Set (Recommended)
+## 8) Common Integration Failures and Fixes
+
+### 8.1 "Failed to fetch" on worker pages
+
+Usually means frontend cannot reach Core API.
+
+Checks:
+
+- Confirm backend is running on `http://localhost:8000`.
+- Confirm frontend `apiBase` points to `http://localhost:8000`.
+- Confirm browser console does not show mixed host/port mismatch.
+
+### 8.2 "Disallowed CORS origin" on `/shifts` preflight
+
+Checks:
+
+- Ensure `CORE_ALLOWED_ORIGINS` includes active frontend origin (for example `http://localhost:3008`).
+- Restart backend after any `.env` or CORS code change.
+- Confirm the process bound to `8000` is the expected repo instance (stale process from another clone can cause confusion).
+
+### 8.3 `500` with `socket.gaierror` / `getaddrinfo failed`
+
+Cause: invalid database host in `DATABASE_URL`.
+
+Important `.env` behavior:
+
+- If `DATABASE_URL` is duplicated, the last value wins.
+- Remove placeholder duplicate values so only one valid `DATABASE_URL` remains.
+
+### 8.4 `401 Missing bearer token` during manual testing
+
+Protected routes require:
+
+`Authorization: Bearer <supabase_access_token>`
+
+### 8.5 `400 Worker profile missing`
+
+Create profile first:
+
+- `POST /auth/setup-profile`
+
+## 9) Quick Postman Smoke Set (Recommended)
 
 Run these in order:
 

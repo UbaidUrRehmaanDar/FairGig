@@ -3,7 +3,12 @@ export const useApi = () => {
   const supabase = useSupabaseClient()
   const apiBase = String(config.public.apiBase || "http://localhost:8000").replace(/\/$/, "")
 
-  const authFetch = async <T = any>(path: string, options: RequestInit = {}) => {
+  type JsonLike = Record<string, any> | any[]
+  type AuthFetchOptions = Omit<RequestInit, "body"> & {
+    body?: RequestInit["body"] | JsonLike
+  }
+
+  const authFetch = async <T = any>(path: string, options: AuthFetchOptions = {}) => {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
 
@@ -13,7 +18,15 @@ export const useApi = () => {
     }
 
     const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData
-    if (options.body && !isFormData && !headers.has("Content-Type")) {
+    const isStringBody = typeof options.body === "string"
+    const shouldJsonEncodeBody = Boolean(options.body) && !isFormData && !isStringBody
+
+    let body = options.body
+    if (shouldJsonEncodeBody) {
+      body = JSON.stringify(options.body)
+    }
+
+    if (body && !isFormData && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json")
     }
 
@@ -22,10 +35,16 @@ export const useApi = () => {
     }
 
     const normalizedPath = path.startsWith("/") ? path : `/${path}`
-    const response = await fetch(`${apiBase}${normalizedPath}`, {
-      ...options,
-      headers,
-    })
+    let response: Response
+    try {
+      response = await fetch(`${apiBase}${normalizedPath}`, {
+        ...options,
+        body,
+        headers,
+      })
+    } catch {
+      throw new Error(`Cannot reach API at ${apiBase}. Ensure backend is running.`)
+    }
 
     const contentType = response.headers.get("content-type") || ""
     const isJson = contentType.includes("application/json")

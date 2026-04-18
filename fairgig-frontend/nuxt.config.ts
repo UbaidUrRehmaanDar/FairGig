@@ -1,10 +1,22 @@
 import { defineNuxtConfig } from "nuxt/config"
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const appRoot = fileURLToPath(new URL('.', import.meta.url))
 
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
 
 export default defineNuxtConfig({
   css: ['~/assets/css/app.css'],
+  compatibilityDate: '2026-04-18',
+  vite: {
+    resolve: {
+      alias: {
+        '#app-manifest': resolve(appRoot, '.nuxt/manifest/meta/dev.json')
+      }
+    }
+  },
   app: {
     head: {
       link: [

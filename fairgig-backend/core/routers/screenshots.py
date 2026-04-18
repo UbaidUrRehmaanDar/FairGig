@@ -6,7 +6,13 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from supabase import Client, create_client
+
+try:
+    from supabase import Client, create_client
+except Exception:
+    # Keep core API bootable even if optional storage dependency is missing.
+    Client = Any
+    create_client = None
 
 from auth_middleware import get_current_user, require_role
 from db import get_pool
@@ -30,6 +36,15 @@ class ScreenshotReviewIn(BaseModel):
 
 def get_supabase_client() -> Client:
     global _supabase_client
+    if create_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Screenshot storage dependency missing. "
+                "Install backend package 'supabase' to enable screenshot upload/view."
+            ),
+        )
+
     if _supabase_client is None:
         supabase_url = (os.getenv("SUPABASE_URL") or "").strip()
         service_key = (os.getenv("SUPABASE_SERVICE_KEY") or "").strip()

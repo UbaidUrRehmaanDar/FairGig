@@ -1,92 +1,101 @@
+import argparse
 import asyncio
 import os
 import random
-import uuid
 from datetime import date, timedelta
+from typing import Dict, List, Sequence
 
 import asyncpg
 from dotenv import load_dotenv
 
 load_dotenv()
 
-PLATFORMS = ["Careem", "InDrive", "Bykea", "Foodpanda", "Cheetay"]
-CITY_ZONES = ["Gulberg", "DHA", "Johar Town", "Model Town", "Bahria Town"]
-PLATFORM_CATEGORIES = ["ride_hailing", "food_delivery"]
+PLATFORMS_BY_CATEGORY = {
+    "ride_hailing": ["Careem", "InDrive", "Bykea"],
+    "food_delivery": ["Foodpanda", "Cheetay"],
+    "freelance": ["Upwork", "Fiverr"],
+    "domestic": ["Local Services"],
+    "general": ["Careem", "InDrive", "Bykea", "Foodpanda", "Cheetay"],
+}
+DEFAULT_PLATFORMS = ["Careem", "InDrive", "Bykea", "Foodpanda", "Cheetay"]
+VERIFICATION_STATUSES = ["verified", "pending", "unverified", "disputed"]
 
 
-def _choice_or_default(values, default):
-    if not values:
-        return default
-    return random.choice(values)
+def _pick_platform(category: str) -> str:
+    candidates = PLATFORMS_BY_CATEGORY.get((category or "").strip().lower(), DEFAULT_PLATFORMS)
+    return random.choice(candidates)
 
 
-def _build_shift_row(worker_id: uuid.UUID, days_back_limit: int = 60):
-    platform = random.choice(PLATFORMS)
-    gross = round(random.uniform(1600, 9000), 2)
-    deduction_pct = random.uniform(0.12, 0.42)
-    platform_deductions = round(gross * deduction_pct, 2)
-    net = round(max(gross - platform_deductions, 0), 2)
-    hours_worked = round(random.uniform(4, 12), 2)
-    shift_date = date.today() - timedelta(days=random.randint(0, days_back_limit))
+def _build_seed_row(profile: Dict[str, str], days_back: int) -> Sequence:
+    gross = round(random.uniform(2500, 9000), 2)
+    deduction_pct = random.uniform(0.15, 0.35)
+    deductions = round(gross * deduction_pct, 2)
+    net = round(max(gross - deductions, 0), 2)
+    hours = round(random.uniform(4, 11), 2)
+    shift_date = date.today() - timedelta(days=random.randint(0, max(days_back, 0)))
 
-    return {
-        "worker_id": worker_id,
-        "platform": platform,
-        "shift_date": shift_date,
-        "hours_worked": hours_worked,
-        "gross_earned": gross,
-        "platform_deductions": platform_deductions,
-        "net_received": net,
-        "notes": "Seeded demo shift",
-        "verification_status": "verified",
-    }
+    # Keep most seeded rows verified so Phase 5 certificate demos always have data.
+    status = random.choices(VERIFICATION_STATUSES, weights=[0.7, 0.15, 0.1, 0.05], k=1)[0]
+
+    return (
+        profile["id"],
+        _pick_platform(profile.get("platform_category", "general")),
+        shift_date,
+        hours,
+        gross,
+        deductions,
+        net,
+        "seeded demo data",
+        status,
+    )
 
 
-async def _upsert_seed_profiles(conn: asyncpg.Connection, count: int = 12):
-    ids = [uuid.uuid4() for _ in range(count)]
+async def seed(target_rows: int = 60, days_back: int = 30) -> None:
+    database_url = (os.getenv("DATABASE_URL") or "").strip()
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is missing. Seed aborted.")
 
-    for idx, profile_id in enumerate(ids, start=1):
-        await conn.execute(
+    conn = await asyncpg.connect(database_url)
+    try:
+        profiles = await conn.fetch(
             """
-            INSERT INTO profiles (id, full_name, city_zone, platform_category, role)
-            VALUES ($1, $2, $3, $4, 'worker')
-            ON CONFLICT (id) DO UPDATE SET
-                full_name = EXCLUDED.full_name,
-                city_zone = EXCLUDED.city_zone,
-                platform_category = EXCLUDED.platform_category,
-                role = EXCLUDED.role
-            """,
-            profile_id,
-            f"Seed Worker {idx}",
-            _choice_or_default(CITY_ZONES, "Gulberg"),
-            _choice_or_default(PLATFORM_CATEGORIES, "ride_hailing"),
+            SELECT
+                id,
+                COALESCE(NULLIF(platform_category, ''), 'general') AS platform_category,
+                COALESCE(NULLIF(city_zone, ''), 'Unknown') AS city_zone
+            FROM profiles
+            ORDER BY created_at ASC
+            """
         )
 
-    return ids
+        if not profiles:
+            raise RuntimeError(
+                "No profiles found. Create at least one authenticated profile before seeding shifts."
+            )
 
+        profile_dicts: List[Dict[str, str]] = [
+            {
+                "id": str(row["id"]),
+                "platform_category": str(row["platform_category"]),
+                "city_zone": str(row["city_zone"]),
+            }
+            for row in profiles
+        ]
 
-async def seed():
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL is missing. Cannot run seed.")
+        rows_to_insert: List[Sequence] = []
 
-    desired_shift_count = int(os.getenv("SEED_SHIFT_COUNT", "60"))
-    if desired_shift_count < 50:
-        desired_shift_count = 50
+        # Ensure every profile gets at least one current-period verified shift.
+        for p in profile_dicts:
+            base = list(_build_seed_row(p, days_back=7))
+            base[8] = "verified"
+            rows_to_insert.append(tuple(base))
 
-    print(f"Starting seed with target verified shifts: {desired_shift_count}")
+        remaining = max(target_rows - len(rows_to_insert), 0)
+        for _ in range(remaining):
+            p = random.choice(profile_dicts)
+            rows_to_insert.append(_build_seed_row(p, days_back=days_back))
 
-    pool = await asyncpg.create_pool(database_url, min_size=1, max_size=4)
-    inserted = 0
-
-    async with pool.acquire() as conn:
         async with conn.transaction():
-            worker_ids = await _upsert_seed_profiles(conn)
-
-            rows = []
-            for _ in range(desired_shift_count):
-                rows.append(_build_shift_row(random.choice(worker_ids)))
-
             await conn.executemany(
                 """
                 INSERT INTO shifts (
@@ -102,82 +111,52 @@ async def seed():
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 """,
-                [
-                    (
-                        row["worker_id"],
-                        row["platform"],
-                        row["shift_date"],
-                        row["hours_worked"],
-                        row["gross_earned"],
-                        row["platform_deductions"],
-                        row["net_received"],
-                        row["notes"],
-                        row["verification_status"],
-                    )
-                    for row in rows
-                ],
+                rows_to_insert,
             )
-            inserted = len(rows)
 
-        await conn.execute("REFRESH MATERIALIZED VIEW city_medians")
+            await conn.execute("REFRESH MATERIALIZED VIEW city_medians")
 
-        medians_count = await conn.fetchval("SELECT COUNT(*)::int FROM city_medians")
-        non_null_medians = await conn.fetchval(
+        total_shifts = await conn.fetchval("SELECT COUNT(*) FROM shifts")
+        total_verified = await conn.fetchval(
+            "SELECT COUNT(*) FROM shifts WHERE verification_status = 'verified'"
+        )
+        city_medians_rows = await conn.fetchval("SELECT COUNT(*) FROM city_medians")
+        distinct_platforms = await conn.fetchval("SELECT COUNT(DISTINCT platform) FROM shifts")
+        distinct_zones = await conn.fetchval(
             """
-            SELECT COUNT(*)::int
-            FROM city_medians
-            WHERE median_hourly IS NOT NULL
-               OR median_daily IS NOT NULL
+            SELECT COUNT(DISTINCT p.city_zone)
+            FROM shifts s
+            JOIN profiles p ON p.id = s.worker_id
             """
         )
 
-        print(f"Inserted verified shifts: {inserted}")
-        print(f"city_medians rows: {medians_count}")
-        print(f"city_medians non-null rows: {non_null_medians}")
-
-    await pool.close()
-    print("Seed completed successfully.")
-
-
-async def verify_city_median_sample():
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL is missing. Cannot verify city medians.")
-
-    conn = await asyncpg.connect(database_url)
-    try:
-        sample = await conn.fetchrow(
-            """
-            SELECT
-                platform,
-                city_zone,
-                platform_category,
-                month,
-                median_hourly,
-                median_daily,
-                avg_commission_pct,
-                sample_size
-            FROM city_medians
-            ORDER BY month DESC, sample_size DESC
-            LIMIT 1
-            """
+        print(
+            "Seed complete:",
+            {
+                "inserted_rows": len(rows_to_insert),
+                "total_shifts": int(total_shifts or 0),
+                "verified_shifts": int(total_verified or 0),
+                "city_medians_rows": int(city_medians_rows or 0),
+                "distinct_platforms": int(distinct_platforms or 0),
+                "distinct_zones": int(distinct_zones or 0),
+            },
         )
-
-        if sample is None:
-            print("city_medians verification: no rows found")
-            return
-
-        print("city_medians verification sample:")
-        for key in sample.keys():
-            print(f"- {key}: {sample[key]}")
     finally:
         await conn.close()
 
 
-async def main():
-    await seed()
-    await verify_city_median_sample()
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Seed FairGig demo shifts and refresh city medians")
+    parser.add_argument("--rows", type=int, default=60, help="Number of shifts to insert (default: 60)")
+    parser.add_argument(
+        "--days-back",
+        type=int,
+        default=30,
+        help="Seed shift dates in [today - days_back, today] (default: 30)",
+    )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    args = _parse_args()
+    asyncio.run(seed(target_rows=max(args.rows, 1), days_back=max(args.days_back, 0)))

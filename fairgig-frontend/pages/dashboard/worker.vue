@@ -13,27 +13,32 @@
       <section class="summary-grid" v-if="!summaryLoading && summary">
         <article class="summary-card">
           <div class="card-label">This Month</div>
-          <div class="card-value">PKR {{ formatNum(summary.this_month) }}</div>
+          <div class="card-value">PKR {{ formatMoney(summary.this_month) }}</div>
         </article>
 
         <article class="summary-card">
           <div class="card-label">This Week</div>
-          <div class="card-value">PKR {{ formatNum(summary.this_week) }}</div>
+          <div class="card-value">PKR {{ formatMoney(summary.this_week) }}</div>
         </article>
 
         <article class="summary-card">
           <div class="card-label">Avg Hourly</div>
-          <div class="card-value">PKR {{ formatNum(summary.avg_hourly) }}/hr</div>
+          <div class="card-value">PKR {{ formatMoney(summary.avg_hourly) }}/hr</div>
         </article>
 
         <article class="summary-card">
           <div class="card-label">Platform Takes</div>
-          <div class="card-value highlight">{{ formatNum(summary.avg_commission_pct) }}%</div>
+          <div class="card-value highlight">{{ formatPercent(summary.avg_commission_pct) }}%</div>
+        </article>
+
+        <article class="summary-card">
+          <div class="card-label">Total Shifts</div>
+          <div class="card-value">{{ formatCount(summary.total_shifts) }}</div>
         </article>
       </section>
 
       <section class="summary-grid" v-else>
-        <article class="summary-card skeleton-card" v-for="n in 4" :key="n"></article>
+        <article class="summary-card skeleton-card" v-for="n in 5" :key="n"></article>
       </section>
 
       <p v-if="summaryError" class="table-empty">{{ summaryError }}</p>
@@ -53,8 +58,8 @@
         </div>
 
         <div v-if="cityMedian?.median_hourly" class="comparison-content">
-          <p>City median hourly: <strong>PKR {{ formatNum(cityMedian.median_hourly) }}</strong></p>
-          <p>Your avg hourly: <strong>PKR {{ formatNum(summary.avg_hourly) }}</strong></p>
+          <p>City median hourly: <strong>PKR {{ formatMoney(cityMedian.median_hourly) }}</strong></p>
+          <p>Your avg hourly: <strong>PKR {{ formatMoney(summary.avg_hourly) }}</strong></p>
 
           <div
             :class="[
@@ -147,8 +152,8 @@
               <tr v-for="s in shifts.slice(0, 10)" :key="s.id">
                 <td>{{ s.shift_date }}</td>
                 <td>{{ s.platform }}</td>
-                <td>PKR {{ formatNum(s.gross_earned) }}</td>
-                <td>PKR {{ formatNum(s.net_received) }}</td>
+                <td>PKR {{ formatMoney(s.gross_earned) }}</td>
+                <td>PKR {{ formatMoney(s.net_received) }}</td>
                 <td>{{ commissionPct(s) }}%</td>
                 <td>
                   <span :class="['status-pill', normalizeStatus(s.verification_status)]">
@@ -221,9 +226,21 @@ const anomalyLoading = ref(false)
 
 const latestPlatform = computed(() => String(shifts.value?.[0]?.platform || ''))
 
-const formatNum = (n: number | string | null | undefined) => {
+const formatMoney = (n: number | string | null | undefined) => {
   const num = Number(n || 0)
-  if (!Number.isFinite(num) || num === 0) return '—'
+  if (!Number.isFinite(num)) return '0'
+  return Math.round(num).toLocaleString('en-PK')
+}
+
+const formatPercent = (n: number | string | null | undefined) => {
+  const num = Number(n || 0)
+  if (!Number.isFinite(num)) return '0.0'
+  return num.toFixed(1)
+}
+
+const formatCount = (n: number | string | null | undefined) => {
+  const num = Number(n || 0)
+  if (!Number.isFinite(num)) return '0'
   return Math.round(num).toLocaleString('en-PK')
 }
 
@@ -234,12 +251,15 @@ const commissionPct = (s: any) => {
   return ((ded / gross) * 100).toFixed(1)
 }
 
-const normalizeStatus = (status: string) => {
-  const v = String(status || 'unverified').toLowerCase()
-  if (v.includes('verified')) return 'verified'
-  if (v.includes('pending')) return 'pending'
-  if (v.includes('flag')) return 'flagged'
-  if (v.includes('unverifiable')) return 'flagged'
+const normalizeStatus = (status?: string | null) => {
+  const v = String(status || 'unverified')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+
+  if (v === 'verified') return 'verified'
+  if (v === 'pending' || v === 'in_review' || v === 'under_review') return 'pending'
+  if (v === 'flagged' || v === 'disputed' || v === 'unverifiable' || v === 'rejected') return 'flagged'
   return 'unverified'
 }
 
@@ -784,8 +804,6 @@ th {
 
 /* Responsive */
 @media (max-width: 679px) {
-  .worker-dashboard-page {
-  }
   .page-header {
     flex-direction: column;
     align-items: stretch;

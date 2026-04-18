@@ -27,6 +27,7 @@ type ShiftSummary = {
 export const useShiftsStore = defineStore('shifts', () => {
   const { authFetch } = useApi()
   const config = useRuntimeConfig()
+  const supabase = useSupabaseClient()
 
   const shifts = ref<ShiftRecord[]>([])
   const shiftsError = ref('')
@@ -39,12 +40,22 @@ export const useShiftsStore = defineStore('shifts', () => {
   const anomalyError = ref('')
   const anomalyScannedAt = ref<string | null>(null)
 
+  const getCurrentUserId = async () => {
+    const { data } = await supabase.auth.getSession()
+    const userId = data.session?.user?.id
+    return typeof userId === 'string' ? userId.trim() : ''
+  }
+
   const fetchShifts = async () => {
     loading.value = true
     shiftsError.value = ''
     try {
       const data = await authFetch<ShiftRecord[]>('/shifts')
-      shifts.value = Array.isArray(data) ? data : []
+      const rows = Array.isArray(data) ? data : []
+      const currentUserId = await getCurrentUserId()
+      shifts.value = currentUserId
+        ? rows.filter((row) => String(row.worker_id || '').trim() === currentUserId)
+        : rows
       return shifts.value
     } catch (error: any) {
       shifts.value = []
@@ -100,7 +111,8 @@ export const useShiftsStore = defineStore('shifts', () => {
   const detectAnomalies = async (limit = 25) => {
     anomalyError.value = ''
 
-    const workerId = String(shifts.value?.[0]?.worker_id || '').trim()
+    const currentUserId = await getCurrentUserId()
+    const workerId = currentUserId || String(shifts.value?.[0]?.worker_id || '').trim()
     const earnings = (shifts.value || [])
       .slice(0, limit)
       .map((shift) => ({
