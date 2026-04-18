@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import UUID
 
-import asyncpg
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from auth_middleware import get_current_user, require_role
 from db import get_pool
+
+try:
+    import asyncpg  # type: ignore
+    ForeignKeyViolationError = asyncpg.ForeignKeyViolationError
+except ModuleNotFoundError:  # pragma: no cover
+    asyncpg = None
+
+    class ForeignKeyViolationError(Exception):
+        pass
 
 router = APIRouter()
 
@@ -32,13 +42,16 @@ def _to_json(value: Any):
     return value
 
 
-def _serialize_row(row: asyncpg.Record) -> dict:
+def _serialize_row(row: Any) -> dict:
     return {key: _to_json(row[key]) for key in row.keys()}
 
 
 @router.post("/")
 async def create_grievance(g: GrievanceIn, user=Depends(require_role("worker"))):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
 
     try:
         row = await pool.fetchrow(
@@ -72,7 +85,7 @@ async def create_grievance(g: GrievanceIn, user=Depends(require_role("worker")))
             g.description,
             g.tags,
         )
-    except asyncpg.ForeignKeyViolationError as exc:
+    except ForeignKeyViolationError as exc:
         raise HTTPException(
             status_code=400,
             detail="Worker profile missing. Complete /auth/setup-profile first.",
@@ -99,7 +112,10 @@ async def list_grievances(
     category: Optional[str] = None,
     status: Optional[str] = None,
 ):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
 
     clauses = ["1=1"]
     params: List[Any] = []
@@ -161,7 +177,10 @@ async def escalate(grievance_id: str, user=Depends(require_role("advocate"))):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid grievance_id format") from exc
 
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
     row = await pool.fetchrow(
         """
         UPDATE grievances
@@ -190,7 +209,10 @@ async def upvote(grievance_id: str, user=Depends(get_current_user)):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid grievance_id format") from exc
 
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
     row = await pool.fetchrow(
         """
         UPDATE grievances

@@ -46,8 +46,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBase: "http://localhost:8000",
-      anomalyBase: "http://localhost:8001",
+      apiBase: "http://127.0.0.1:8000",
+      anomalyBase: "http://127.0.0.1:8001",
     },
   },
 })

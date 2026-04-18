@@ -5,6 +5,9 @@
     "dev": "npm --prefix fairgig-frontend run dev",
     "build": "npm --prefix fairgig-frontend run build",
     "dev:frontend": "npm --prefix fairgig-frontend run dev",
-    "build:frontend": "npm --prefix fairgig-frontend run build"
+    "build:frontend": "npm --prefix fairgig-frontend run build",
+    "dev:core": "python -m uvicorn main:app --reload --port 8000 --host 127.0.0.1 --app-dir fairgig-backend/core",
+    "dev:anomaly": "python -m uvicorn main:app --reload --port 8001 --host 127.0.0.1 --app-dir fairgig-backend/anomaly",
+    "dev:backend": "echo Run 'npm run dev:core' and 'npm run dev:anomaly' in two terminals."
   }
 }

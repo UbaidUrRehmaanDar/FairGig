@@ -1,7 +1,7 @@
 export const useApi = () => {
   const config = useRuntimeConfig()
   const supabase = useSupabaseClient()
-  const apiBase = String(config.public.apiBase || "http://localhost:8000").replace(/\/$/, "")
+  const apiBase = String(config.public.apiBase || "http://127.0.0.1:8000").replace(/\/$/, "")
 
   type JsonLike = Record<string, any> | any[]
   type AuthFetchOptions = Omit<RequestInit, "body"> & {

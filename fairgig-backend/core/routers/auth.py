@@ -1,11 +1,21 @@
+from __future__ import annotations
+
 from typing import Literal
 
-import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth_middleware import get_current_user
 from db import get_pool
+
+try:
+    import asyncpg  # type: ignore
+    ForeignKeyViolationError = asyncpg.ForeignKeyViolationError
+except ModuleNotFoundError:  # pragma: no cover
+    asyncpg = None
+
+    class ForeignKeyViolationError(Exception):
+        pass
 
 router = APIRouter()
 
@@ -19,7 +29,10 @@ class ProfileSetupIn(BaseModel):
 
 @router.post("/setup-profile")
 async def setup_profile(profile: ProfileSetupIn, user=Depends(get_current_user)):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
 
     trusted_role = user.get("role") if isinstance(user.get("role"), str) else "worker"
     trusted_role = trusted_role.strip().lower() or "worker"
@@ -43,7 +56,7 @@ async def setup_profile(profile: ProfileSetupIn, user=Depends(get_current_user))
             profile.platform_category,
             trusted_role,
         )
-    except asyncpg.ForeignKeyViolationError as exc:
+    except ForeignKeyViolationError as exc:
         raise HTTPException(
             status_code=400,
             detail=(

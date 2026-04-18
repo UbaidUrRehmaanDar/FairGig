@@ -1,16 +1,26 @@
+from __future__ import annotations
+
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Optional
 
 import os
 
-import asyncpg
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from auth_middleware import require_role
 from db import get_pool
+
+try:
+    import asyncpg  # type: ignore
+    ForeignKeyViolationError = asyncpg.ForeignKeyViolationError
+except ModuleNotFoundError:  # pragma: no cover
+    asyncpg = None
+
+    class ForeignKeyViolationError(Exception):
+        pass
 
 router = APIRouter()
 
@@ -27,7 +37,7 @@ def _to_json(value: Any):
     return value
 
 
-def _serialize_row(row: asyncpg.Record) -> dict:
+def _serialize_row(row: Any) -> dict:
     return {key: _to_json(row[key]) for key in row.keys()}
 
 
@@ -97,7 +107,11 @@ def _avg_commission_pct(rows: list[dict]) -> float:
 async def _call_anomaly_service(worker_id: str, earnings_payload: list[dict]):
     anomaly_service_url = (os.getenv('ANOMALY_SERVICE_URL') or '').strip()
     if not anomaly_service_url:
-        return [], 'unavailable', 'Anomaly service is not configured.'
+        environment = (os.getenv('ENVIRONMENT') or 'development').strip().lower()
+        if environment == 'development':
+            anomaly_service_url = 'http://127.0.0.1:8001'
+        else:
+            return [], 'unavailable', 'Anomaly service is not configured.'
 
     endpoints = [
         f"{anomaly_service_url.rstrip('/')}/anomaly/detect",
@@ -144,7 +158,7 @@ async def _call_anomaly_service(worker_id: str, earnings_payload: list[dict]):
     return findings, 'ok', None
 
 
-async def _build_worker_anomaly_check(pool: asyncpg.Pool, worker_id: str, limit: int) -> dict:
+async def _build_worker_anomaly_check(pool: Any, worker_id: str, limit: int) -> dict:
     rows = await pool.fetch(
         """
         SELECT
@@ -220,7 +234,10 @@ class ShiftIn(BaseModel):
 
 @router.post("/")
 async def log_shift(shift: ShiftIn, user=Depends(require_role("worker"))):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
 
     try:
         row = await pool.fetchrow(
@@ -247,7 +264,7 @@ async def log_shift(shift: ShiftIn, user=Depends(require_role("worker"))):
             shift.net_received,
             shift.notes,
         )
-    except asyncpg.ForeignKeyViolationError as exc:
+    except ForeignKeyViolationError as exc:
         raise HTTPException(
             status_code=400,
             detail="Worker profile missing. Complete /auth/setup-profile first.",
@@ -275,7 +292,10 @@ async def log_shift(shift: ShiftIn, user=Depends(require_role("worker"))):
 
 @router.get("/")
 async def list_shifts(user=Depends(require_role("worker"))):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception:
+        return []
 
     rows = await pool.fetch(
         """
@@ -304,7 +324,16 @@ async def list_shifts(user=Depends(require_role("worker"))):
 
 @router.get("/summary")
 async def shift_summary(user=Depends(require_role("worker"))):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception:
+        return {
+            "this_month": 0,
+            "this_week": 0,
+            "avg_hourly": 0,
+            "avg_commission_pct": 0,
+            "total_shifts": 0,
+        }
     row = await pool.fetchrow(
         """
         SELECT
@@ -353,7 +382,19 @@ async def shift_summary(user=Depends(require_role("worker"))):
 
 @router.get("/city-median")
 async def city_median(platform: str, user=Depends(require_role("worker"))):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception:
+        return {
+            "platform": platform,
+            "city_zone": None,
+            "platform_category": None,
+            "median_hourly": None,
+            "median_daily": None,
+            "avg_commission_pct": None,
+            "sample_size": 0,
+            "note": "Database is unavailable.",
+        }
 
     profile = await pool.fetchrow(
         "SELECT city_zone, platform_category FROM profiles WHERE id = $1",
@@ -413,5 +454,27 @@ async def anomaly_check(
     limit: int = Query(ANOMALY_DEFAULT_LIMIT, ge=1, le=ANOMALY_MAX_LIMIT),
     user=Depends(require_role("worker")),
 ):
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception:
+        return {
+            "worker_id": user["id"],
+            "scanned_at": _utc_now_iso(),
+            "window_limit": limit,
+            "service_status": "unavailable",
+            "service_message": "Database is unavailable.",
+            "summary": {
+                "shifts_analyzed": 0,
+                "high_priority_flags": 0,
+                "avg_commission_pct": 0.0,
+                "total_net": 0.0,
+            },
+            "findings_count": 0,
+            "findings": [],
+            "public_api": {
+                "endpoint": "/anomaly/detect",
+                "description": "Anomaly detection runs on the sidecar when shift history is available.",
+            },
+        }
+
     return await _build_worker_anomaly_check(pool, user["id"], limit)

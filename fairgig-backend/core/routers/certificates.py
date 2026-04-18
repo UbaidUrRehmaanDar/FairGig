@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from auth_middleware import get_current_user
 from db import get_pool
+
+try:
+    import asyncpg  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    asyncpg = None
 
 router = APIRouter()
 
@@ -22,7 +28,7 @@ def _to_json(value: Any):
     return value
 
 
-def _serialize_row(row: asyncpg.Record) -> dict:
+def _serialize_row(row: Any) -> dict:
     return {key: _to_json(row[key]) for key in row.keys()}
 
 
@@ -35,7 +41,10 @@ async def certificate_data(
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="start_date must be on or before end_date")
 
-    pool = await get_pool()
+    try:
+        pool = await get_pool()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
 
     profile = await pool.fetchrow(
         """
