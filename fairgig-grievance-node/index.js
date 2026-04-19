@@ -8,6 +8,17 @@ require('dotenv').config({ path: path.join(__dirname, '..', 'fairgig-backend', '
 const app = express()
 const port = Number(process.env.PORT || 3002)
 
+const HEALTH_ROUTES = ['/health', '/api/health']
+const GRIEVANCES_COLLECTION_ROUTES = ['/grievances', '/api/grievances']
+const GRIEVANCES_UPVOTE_ROUTES = [
+  '/grievances/:grievance_id/upvote',
+  '/api/grievances/:grievance_id/upvote',
+]
+const GRIEVANCES_ESCALATE_ROUTES = [
+  '/grievances/:grievance_id/escalate',
+  '/api/grievances/:grievance_id/escalate',
+]
+
 const parseOriginList = (value) => String(value || '')
   .split(',')
   .map((item) => item.trim().replace(/\/$/, ''))
@@ -181,11 +192,11 @@ const requireAuth = async (req, res, next) => {
   }
 }
 
-app.get('/health', async (_req, res) => {
+app.get(HEALTH_ROUTES, async (_req, res) => {
   res.json({ status: 'ok', service: 'fairgig-grievance-node' })
 })
 
-app.post('/grievances', requireRole('worker'), async (req, res) => {
+app.post(GRIEVANCES_COLLECTION_ROUTES, requireRole('worker'), async (req, res) => {
   const parsed = validateGrievancePayload(req.body || {})
   if (!parsed.ok) {
     return res.status(400).json({ detail: parsed.detail })
@@ -243,7 +254,7 @@ app.post('/grievances', requireRole('worker'), async (req, res) => {
   }
 })
 
-app.get('/grievances', async (req, res) => {
+app.get(GRIEVANCES_COLLECTION_ROUTES, async (req, res) => {
   const { platform = null, category = null, status = null } = req.query || {}
 
   const normalizedPlatform = platform ? normalizeText(platform) : null
@@ -316,7 +327,7 @@ app.get('/grievances', async (req, res) => {
   }
 })
 
-app.post('/grievances/:grievance_id/upvote', requireAuth, async (req, res) => {
+app.post(GRIEVANCES_UPVOTE_ROUTES, requireAuth, async (req, res) => {
   const { grievance_id: grievanceId } = req.params
   if (!validateUuid(grievanceId)) {
     return res.status(400).json({ detail: 'Invalid grievance_id format' })
@@ -350,7 +361,7 @@ app.post('/grievances/:grievance_id/upvote', requireAuth, async (req, res) => {
   }
 })
 
-app.patch('/grievances/:grievance_id/escalate', requireRole('advocate'), async (req, res) => {
+app.patch(GRIEVANCES_ESCALATE_ROUTES, requireRole('advocate'), async (req, res) => {
   const { grievance_id: grievanceId } = req.params
   if (!validateUuid(grievanceId)) {
     return res.status(400).json({ detail: 'Invalid grievance_id format' })

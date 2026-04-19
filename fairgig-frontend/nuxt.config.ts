@@ -1,7 +1,17 @@
 import { defineNuxtConfig } from "nuxt/config"
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
+const supabaseUrl = (
+  process.env.SUPABASE_URL ||
+  process.env.NUXT_PUBLIC_SUPABASE_URL ||
+  ''
+).trim().replace(/\/$/, '')
+const supabaseKey = (
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NUXT_PUBLIC_SUPABASE_KEY ||
+  process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY ||
+  ''
+).trim()
 const coreApiUrl = (process.env.NUXT_PUBLIC_CORE_API_URL || process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '')
 const anomalyApiUrl = (process.env.NUXT_PUBLIC_ANOMALY_API_URL || process.env.NUXT_PUBLIC_ANOMALY_BASE || 'http://127.0.0.1:8001').replace(/\/$/, '')
 const grievanceApiUrl = (process.env.NUXT_PUBLIC_GRIEVANCE_API_URL || process.env.NUXT_PUBLIC_GRIEVANCE_BASE || 'http://127.0.0.1:3002').replace(/\/$/, '')

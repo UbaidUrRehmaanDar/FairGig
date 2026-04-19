@@ -175,9 +175,11 @@ import { onMounted, ref } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { useSupabaseClient } from '#imports'
 import { useApi } from '../composables/useApi'
+import { useAuthStore } from '../stores/auth'
 import { useShiftsStore } from '../stores/shifts'
 
 const supabase = useSupabaseClient()
+const authStore = useAuthStore()
 const { authFetch } = useApi()
 const shiftsStore = useShiftsStore()
 
@@ -366,8 +368,8 @@ const signOut = async () => {
   if (isSigningOut.value) return
   isSigningOut.value = true
   try {
-    await supabase.auth.signOut()
-    await navigateTo('/login')
+    await authStore.signOut()
+    await navigateTo('/login', { replace: true })
   } finally {
     isSigningOut.value = false
   }

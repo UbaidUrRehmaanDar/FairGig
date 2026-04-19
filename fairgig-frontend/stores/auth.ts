@@ -30,6 +30,37 @@ const readDemoPersona = (): FairGigRole | null => {
   }
 }
 
+const clearPersistedAuthState = () => {
+  if (typeof window === 'undefined') return
+
+  const shouldRemove = (key: string) => {
+    if (key === 'supabase.auth.token') return true
+    if (!key.startsWith('sb-')) return false
+    return (
+      key.includes('auth-token') ||
+      key.includes('refresh-token') ||
+      key.includes('code-verifier')
+    )
+  }
+
+  const clearStorage = (storage: Storage) => {
+    for (let i = storage.length - 1; i >= 0; i -= 1) {
+      const key = storage.key(i)
+      if (!key) continue
+      if (shouldRemove(key)) {
+        storage.removeItem(key)
+      }
+    }
+  }
+
+  try {
+    clearStorage(window.localStorage)
+    clearStorage(window.sessionStorage)
+  } catch {
+    // ignore storage access errors in restricted browser modes
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const supabase = useSupabaseClient()
 
@@ -69,10 +100,26 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const signOut = async () => {
-    const result = await supabase.auth.signOut()
-    role.value = 'worker'
+    let lastError: unknown = null
+
+    try {
+      const result = await supabase.auth.signOut({ scope: 'global' })
+      if (result.error) lastError = result.error
+    } catch (error) {
+      lastError = error
+    }
+
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // ignore and continue with local cleanup
+    }
+
+    clearPersistedAuthState()
+
+    role.value = readDemoPersona() || 'worker'
     initialized.value = true
-    return result
+    return { error: lastError }
   }
 
   return {
