@@ -119,6 +119,7 @@
             <div class="upload-row">
               <input
                 id="pre-submit-screenshot"
+                class="upload-input"
                 :key="fileInputKey"
                 type="file"
                 accept="image/*"
@@ -619,6 +620,52 @@ const uploadScreenshot = async (shiftId: string) => {
   flex-wrap: wrap;
   align-items: center;
 }
+
+.upload-input {
+  max-width: 100%;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: 0.86rem;
+}
+
+.upload-input::file-selector-button {
+  border: 1px solid var(--fg-border);
+  border-radius: 9999px;
+  background: var(--fg-surface-muted);
+  color: var(--fg-text);
+  font-weight: 700;
+  font-size: 0.86rem;
+  padding: 0.55rem 0.9rem;
+  margin-right: 0.6rem;
+  cursor: pointer;
+  transition:
+    background-color 120ms linear,
+    color 120ms linear,
+    border-color 120ms linear,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.upload-input:hover::file-selector-button {
+  background: var(--fg-surface);
+  color: var(--fg-primary);
+  border-color: var(--fg-border);
+  transform: translateY(-1px);
+  box-shadow: var(--fg-shadow);
+}
+
+.upload-input:active::file-selector-button {
+  transform: translateY(0);
+}
+
+.upload-input:focus-visible {
+  outline: none;
+}
+
+.upload-input:focus-visible::file-selector-button {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 25%, transparent);
+}
+
 .file-input {
   max-width: 100%;
 }

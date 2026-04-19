@@ -1,5 +1,12 @@
 <template>
-  <div class="auth-index">
+  <div v-if="state === 'checking'" class="index-loader" role="status" aria-live="polite">
+    <div class="loader-card">
+      <div class="loader-spinner" aria-hidden="true"></div>
+      <p>Loading FairGig...</p>
+    </div>
+  </div>
+
+  <div v-else class="auth-index">
     <!-- Left Brand Panel -->
     <section class="left-panel">
       <div class="left-content">
@@ -25,23 +32,17 @@
         </div>
 
         <div class="status-chip" aria-live="polite">
-          <span class="icon" :class="{ spin: state === 'checking' }">{{ statusIcon }}</span>
+          <span class="icon">{{ statusIcon }}</span>
           <span>{{ statusText }}</span>
         </div>
 
         <div class="actions">
-          <button
-            type="button"
-            class="primary-button"
-            :class="{ 'is-loading': state === 'checking' }"
-            :disabled="state === 'checking'"
-            @click="primaryAction"
-          >
+          <button type="button" class="primary-button" @click="primaryAction">
             <span>{{ primaryLabel }}</span>
           </button>
         </div>
 
-        <div class="link-row" v-if="state !== 'checking'">
+        <div class="link-row">
           <p v-if="state === 'guest'">
             New to the platform? <NuxtLink to="/register">Join the community</NuxtLink>
           </p>
@@ -103,12 +104,10 @@ const statusText = computed(() => {
 })
 
 const primaryLabel = computed(() => {
-  if (state.value === 'checking') return 'Redirecting...'
   return 'Go to Login'
 })
 
 const primaryAction = async () => {
-  if (state.value === 'checking') return
   await navigateTo('/login')
 }
 
@@ -135,6 +134,38 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.index-loader {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fg-bg);
+  color: var(--fg-text);
+  font-family: 'Raleway', sans-serif;
+}
+
+.loader-card {
+  display: grid;
+  place-items: center;
+  gap: 0.85rem;
+  text-align: center;
+}
+
+.loader-card p {
+  color: var(--fg-muted);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.loader-spinner {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 3px solid color-mix(in srgb, var(--fg-primary) 20%, transparent);
+  border-top-color: var(--fg-primary);
+  animation: spin 0.9s linear infinite;
+}
+
 .auth-index {
   display: flex;
   min-height: 100vh;
@@ -249,9 +280,6 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.spin {
-  animation: spin 1s linear infinite;
-}
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -264,7 +292,7 @@ onMounted(async () => {
   justify-content: center;
 }
 
-/* ✅ Primary button microinteraction synced with login/register */
+/* Primary button microinteraction synced with login/register */
 .primary-button {
   width: 18rem;
   height: 3.2rem;
