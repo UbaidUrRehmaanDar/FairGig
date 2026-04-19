@@ -248,7 +248,7 @@ async def _call_anomaly_service(worker_id: str, earnings_payload: list[dict]):
         return local_findings, 'ok', None
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code if exc.response is not None else last_status
-        if status in {404, 500, 502, 503, 504}:
+        if status in {400, 404, 422, 500, 502, 503, 504}:
             local_findings = _detect_anomalies_locally(earnings_payload)
             return local_findings, 'ok', None
         return [], 'error', f'Anomaly service failed ({status}).'
