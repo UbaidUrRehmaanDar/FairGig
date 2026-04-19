@@ -191,19 +191,33 @@ const requireRole = (role) => async (req, res, next) => {
   }
 }
 
-// --- HEALTH ROUTES ---
-app.get(HEALTH_ROUTES, (_req, res) => {
-  res.json({ status: 'ok', service: 'fairgig-grievance-node' })
+// --- ROOT health check ---
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'fairgig-grievance-node', version: 'demo-v2' })
 })
 
-// --- POST /grievances ---
-app.post(GRIEVANCES_COLLECTION_ROUTES, requireAuth, async (req, res) => {
+// --- HEALTH ROUTES ---
+app.get(HEALTH_ROUTES, (_req, res) => {
+  res.json({ status: 'ok', service: 'fairgig-grievance-node', version: 'demo-v2' })
+})
+
+// --- POST /grievances (auth optional for demo) ---
+app.post(GRIEVANCES_COLLECTION_ROUTES, async (req, res) => {
   const validation = validateGrievancePayload(req.body)
   if (!validation.ok) {
     return res.status(400).json({ detail: validation.detail })
   }
 
   const { platform, category, title, description, tags } = validation.value
+
+  // Try to get user from token; fall back to a demo UUID if unauthenticated
+  let workerId = '00000000-0000-0000-0000-000000000000'
+  try {
+    const user = await getSupabaseUser(req)
+    if (user?.id) workerId = user.id
+  } catch (_) {
+    // unauthenticated — use demo worker id
+  }
 
   try {
     const result = await pool.query(
@@ -230,7 +244,7 @@ app.post(GRIEVANCES_COLLECTION_ROUTES, requireAuth, async (req, res) => {
         created_at,
         updated_at
       `,
-      [req.user.id, platform, category, title, description, tags]
+      [workerId, platform, category, title, description, tags]
     )
 
     const row = result.rows[0]
@@ -249,7 +263,7 @@ app.post(GRIEVANCES_COLLECTION_ROUTES, requireAuth, async (req, res) => {
     })
   } catch (error) {
     if (String(error?.message || '').includes('foreign key')) {
-      return res.status(400).json({ detail: 'Worker profile missing. Complete /auth/setup-profile first.' })
+      return res.status(400).json({ detail: 'Worker profile missing.' })
     }
     return res.status(503).json({ detail: 'Database is unavailable.' })
   }
