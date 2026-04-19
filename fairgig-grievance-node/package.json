@@ -5,6 +5,7 @@
   "description": "FairGig grievance service built with Express.js",
   "main": "index.js",
   "scripts": {
+    "build": "echo \"No build step required\"",
     "start": "node index.js",
     "dev": "node index.js"
   },
