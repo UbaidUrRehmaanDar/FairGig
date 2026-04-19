@@ -8,10 +8,40 @@ require('dotenv').config({ path: path.join(__dirname, '..', 'fairgig-backend', '
 const app = express()
 const port = Number(process.env.PORT || 3002)
 
-const allowedOrigin = process.env.CORS_ORIGIN || '*'
+const parseOriginList = (value) => String(value || '')
+  .split(',')
+  .map((item) => item.trim().replace(/\/$/, ''))
+  .filter(Boolean)
+
+const defaultAllowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'http://localhost:3005',
+  'http://localhost:3006',
+  'http://localhost:3007',
+  'http://localhost:3015',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  'http://127.0.0.1:3002',
+  'http://127.0.0.1:3005',
+  'http://127.0.0.1:3006',
+  'http://127.0.0.1:3007',
+  'http://127.0.0.1:3015',
+]
+
+const allowedOrigins = Array.from(
+  new Set([
+    ...defaultAllowedOrigins,
+    ...parseOriginList(process.env.FRONTEND_URL),
+    ...parseOriginList(process.env.VERCEL_FRONTEND_URL),
+    ...parseOriginList(process.env.CORS_ORIGIN || process.env.GRIEVANCE_ALLOWED_ORIGINS),
+  ])
+)
 
 app.use(cors({
-  origin: allowedOrigin === '*' ? true : allowedOrigin.split(',').map((item) => item.trim()).filter(Boolean),
+  origin: allowedOrigins.length ? allowedOrigins : true,
+  credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }))

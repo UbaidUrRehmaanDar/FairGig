@@ -74,7 +74,7 @@
           <div class="input-group">
             <div class="label-container">
               <label for="password">Password</label>
-              <a href="#">Forgot Password?</a>
+               
             </div>
 
             <div class="input-with-icon">

@@ -1,22 +1,14 @@
 import { defineNuxtConfig } from "nuxt/config"
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const appRoot = fileURLToPath(new URL('.', import.meta.url))
 
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
+const coreApiUrl = (process.env.NUXT_PUBLIC_CORE_API_URL || process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '')
+const anomalyApiUrl = (process.env.NUXT_PUBLIC_ANOMALY_API_URL || process.env.NUXT_PUBLIC_ANOMALY_BASE || 'http://127.0.0.1:8001').replace(/\/$/, '')
+const grievanceApiUrl = (process.env.NUXT_PUBLIC_GRIEVANCE_API_URL || process.env.NUXT_PUBLIC_GRIEVANCE_BASE || 'http://127.0.0.1:3002').replace(/\/$/, '')
 
 export default defineNuxtConfig({
   css: ['~/assets/css/app.css'],
   compatibilityDate: '2026-04-18',
-  vite: {
-    resolve: {
-      alias: {
-        '#app-manifest': resolve(appRoot, '.nuxt/manifest/meta/dev.json')
-      }
-    }
-  },
   app: {
     head: {
       link: [
@@ -46,9 +38,9 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBase: "http://127.0.0.1:8000",
-      anomalyBase: "http://127.0.0.1:8001",
-      grievanceBase: "http://127.0.0.1:3002",
+      apiBase: coreApiUrl,
+      anomalyBase: anomalyApiUrl,
+      grievanceBase: grievanceApiUrl,
     },
   },
 })

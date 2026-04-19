@@ -15,10 +15,13 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(BACKEND_ROOT / ".env")
 
 
+def _parse_origin_list(raw: str) -> List[str]:
+    return [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+
+
 def _parse_allowed_origins(raw: str, fallback: List[str]) -> List[str]:
-    merged = {origin.strip() for origin in fallback if origin.strip()}
-    if raw:
-        merged.update(origin.strip() for origin in raw.split(",") if origin.strip())
+    merged = {origin.strip().rstrip("/") for origin in fallback if origin.strip()}
+    merged.update(_parse_origin_list(raw))
     return sorted(merged)
 
 
@@ -41,8 +44,9 @@ DEFAULT_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3006",
     "http://127.0.0.1:3007",
     "http://127.0.0.1:3015",
-    "https://your-nuxt-app.vercel.app",
 ]
+DEFAULT_ALLOWED_ORIGINS.extend(_parse_origin_list(os.getenv("FRONTEND_URL", "")))
+DEFAULT_ALLOWED_ORIGINS.extend(_parse_origin_list(os.getenv("VERCEL_FRONTEND_URL", "")))
 ALLOWED_ORIGINS = _parse_allowed_origins(
     os.getenv("CORE_ALLOWED_ORIGINS", ""),
     DEFAULT_ALLOWED_ORIGINS,
