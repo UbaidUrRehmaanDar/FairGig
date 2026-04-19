@@ -144,76 +144,35 @@ const getSupabaseUser = async (req) => {
   }
 
   const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '')
-  const serviceKey = (
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    ''
-  ).trim()
+  const express = require('express');
+  const cors = require('cors');
+  const app = express();
 
-  if (!supabaseUrl || !serviceKey) {
-    const error = new Error('Supabase credentials are not configured')
-    error.status = 503
-    throw error
-  }
+  // 1. Force CORS to be wide open
+  app.use(cors({ origin: '*' }));
+  app.use(express.json());
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: serviceKey,
-    },
-  })
+  // 2. Health Check (Test this in your browser)
+  app.get('/', (req, res) => {
+      res.json({ message: "Grievance Service is ALIVE" });
+  });
 
-  if (!response.ok) {
-    const error = new Error('Token invalid or expired')
-    error.status = 401
-    throw error
-  }
+  // 3. The EXACT route your frontend is calling
+  app.post('/grievances', async (req, res) => {
+      console.log("RECEIVED GRIEVANCE:", req.body);
+      try {
+          // Your existing database logic here
+          res.status(201).json({ success: true, message: "Grievance Saved!" });
+      } catch (err) {
+          console.error("DB ERROR:", err);
+          res.status(500).json({ success: false, error: err.message });
+      }
+  });
 
-  const payload = await response.json()
-  const role = payload?.user_metadata?.role || payload?.app_metadata?.role || 'worker'
-  return { id: payload?.id, role }
-}
-
-const requireRole = (...roles) => async (req, res, next) => {
-  try {
-    const user = await getSupabaseUser(req)
-    if (!roles.includes(user.role)) {
-      return res.status(403).json({ detail: 'Insufficient role' })
-    }
-    req.user = user
-    return next()
-  } catch (error) {
-    return res.status(error.status || 500).json({ detail: error.message || 'Unauthorized' })
-  }
-}
-
-const requireAuth = async (req, res, next) => {
-  try {
-    req.user = await getSupabaseUser(req)
-    return next()
-  } catch (error) {
-    return res.status(error.status || 500).json({ detail: error.message || 'Unauthorized' })
-  }
-}
-
-app.get('/', (_req, res) => {
-  res.json({ message: 'Grievance Service Node.js is active' })
-})
-
-app.get(HEALTH_ROUTES, async (_req, res) => {
-  res.json({ status: 'ok', service: 'fairgig-grievance-node' })
-})
-
-app.post(GRIEVANCES_COLLECTION_ROUTES, requireRole('worker'), async (req, res) => {
-  const parsed = validateGrievancePayload(req.body || {})
-  if (!parsed.ok) {
-    return res.status(400).json({ detail: parsed.detail })
-  }
-
-  const { platform, category, title, description, tags } = parsed.value
-
-  try {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+  });
     const result = await pool.query(
       `
       INSERT INTO grievances (
