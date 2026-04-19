@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 try:
     from supabase import Client, create_client
@@ -39,6 +39,14 @@ SUPABASE_SDK_KEY_PATTERN = re.compile(
 class ScreenshotReviewIn(BaseModel):
     status: Literal["verified", "flagged", "unverifiable"]
     note: str = ""
+
+    @field_validator("note")
+    @classmethod
+    def validate_note(cls, value: str) -> str:
+        cleaned = " ".join(str(value or "").split()).strip()
+        if len(cleaned) > 500:
+            raise ValueError("note must be 500 characters or fewer")
+        return cleaned
 
 
 def _get_storage_credentials() -> tuple[str, str]:

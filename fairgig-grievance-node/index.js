@@ -36,6 +36,57 @@ const serializeRow = (row) => {
   return output
 }
 
+const ALLOWED_PLATFORMS = new Set(['Careem', 'InDrive', 'Bykea', 'Foodpanda', 'Cheetay', 'Other'])
+const ALLOWED_CATEGORIES = new Set(['commission_change', 'deactivation', 'payment_delay', 'other'])
+const ALLOWED_FILTER_STATUS = new Set(['open', 'escalated', 'resolved'])
+
+const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim()
+
+const validateUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim())
+
+const validateGrievancePayload = (payload) => {
+  const platform = normalizeText(payload?.platform)
+  const category = normalizeText(payload?.category).toLowerCase()
+  const title = normalizeText(payload?.title)
+  const description = normalizeText(payload?.description)
+  const tags = Array.isArray(payload?.tags)
+    ? Array.from(
+        new Set(
+          payload.tags
+            .map((t) => normalizeText(t).toLowerCase())
+            .filter(Boolean)
+        )
+      )
+    : []
+
+  if (!ALLOWED_PLATFORMS.has(platform)) {
+    return { ok: false, detail: 'Invalid platform' }
+  }
+  if (!ALLOWED_CATEGORIES.has(category)) {
+    return { ok: false, detail: 'Invalid category' }
+  }
+  if (title.length < 5 || title.length > 120) {
+    return { ok: false, detail: 'Title must be between 5 and 120 characters' }
+  }
+  if (description.length < 15 || description.length > 2000) {
+    return { ok: false, detail: 'Description must be between 15 and 2000 characters' }
+  }
+  if (tags.length > 10 || tags.some((tag) => tag.length > 24)) {
+    return { ok: false, detail: 'Tags must be <= 10 items and each <= 24 characters' }
+  }
+
+  return {
+    ok: true,
+    value: {
+      platform,
+      category,
+      title,
+      description,
+      tags,
+    },
+  }
+}
+
 const getSupabaseUser = async (req) => {
   const authHeader = req.header('authorization') || req.header('Authorization') || ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
@@ -105,11 +156,12 @@ app.get('/health', async (_req, res) => {
 })
 
 app.post('/grievances', requireRole('worker'), async (req, res) => {
-  const { platform, category, title, description, tags = [] } = req.body || {}
-
-  if (!platform || !category || !title || !description) {
-    return res.status(400).json({ detail: 'Missing required grievance fields' })
+  const parsed = validateGrievancePayload(req.body || {})
+  if (!parsed.ok) {
+    return res.status(400).json({ detail: parsed.detail })
   }
+
+  const { platform, category, title, description, tags } = parsed.value
 
   try {
     const result = await pool.query(
@@ -136,7 +188,7 @@ app.post('/grievances', requireRole('worker'), async (req, res) => {
         created_at,
         updated_at
       `,
-      [req.user.id, platform, category, title, description, Array.isArray(tags) ? tags : []]
+      [req.user.id, platform, category, title, description, tags]
     )
 
     const row = result.rows[0]
@@ -163,19 +215,33 @@ app.post('/grievances', requireRole('worker'), async (req, res) => {
 
 app.get('/grievances', async (req, res) => {
   const { platform = null, category = null, status = null } = req.query || {}
+
+  const normalizedPlatform = platform ? normalizeText(platform) : null
+  const normalizedCategory = category ? normalizeText(category).toLowerCase() : null
+  const normalizedStatus = status ? normalizeText(status).toLowerCase() : null
+
+  if (normalizedPlatform && !ALLOWED_PLATFORMS.has(normalizedPlatform)) {
+    return res.status(400).json({ detail: 'Invalid platform filter' })
+  }
+  if (normalizedCategory && !ALLOWED_CATEGORIES.has(normalizedCategory)) {
+    return res.status(400).json({ detail: 'Invalid category filter' })
+  }
+  if (normalizedStatus && !ALLOWED_FILTER_STATUS.has(normalizedStatus)) {
+    return res.status(400).json({ detail: 'Invalid status filter' })
+  }
   const clauses = ['1=1']
   const params = []
 
-  if (platform) {
-    params.push(platform)
+  if (normalizedPlatform) {
+    params.push(normalizedPlatform)
     clauses.push(`g.platform = $${params.length}`)
   }
-  if (category) {
-    params.push(category)
+  if (normalizedCategory) {
+    params.push(normalizedCategory)
     clauses.push(`g.category = $${params.length}`)
   }
-  if (status) {
-    params.push(status)
+  if (normalizedStatus) {
+    params.push(normalizedStatus)
     clauses.push(`g.status = $${params.length}`)
   }
 
@@ -210,9 +276,9 @@ app.get('/grievances', async (req, res) => {
       items,
       count: items.length,
       filters: {
-        platform,
-        category,
-        status,
+        platform: normalizedPlatform,
+        category: normalizedCategory,
+        status: normalizedStatus,
       },
     })
   } catch (error) {
@@ -222,6 +288,9 @@ app.get('/grievances', async (req, res) => {
 
 app.post('/grievances/:grievance_id/upvote', requireAuth, async (req, res) => {
   const { grievance_id: grievanceId } = req.params
+  if (!validateUuid(grievanceId)) {
+    return res.status(400).json({ detail: 'Invalid grievance_id format' })
+  }
 
   try {
     const result = await pool.query(
@@ -253,6 +322,9 @@ app.post('/grievances/:grievance_id/upvote', requireAuth, async (req, res) => {
 
 app.patch('/grievances/:grievance_id/escalate', requireRole('advocate'), async (req, res) => {
   const { grievance_id: grievanceId } = req.params
+  if (!validateUuid(grievanceId)) {
+    return res.status(400).json({ detail: 'Invalid grievance_id format' })
+  }
 
   try {
     const result = await pool.query(

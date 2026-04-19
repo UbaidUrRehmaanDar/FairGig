@@ -159,11 +159,28 @@ const validate = () => {
     message.value = 'Please select both start and end dates.'
     return false
   }
+
+  const start = new Date(`${startDate.value}T00:00:00`)
+  const end = new Date(`${endDate.value}T00:00:00`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    messageType.value = 'error'
+    message.value = 'Please select valid dates.'
+    return false
+  }
+
   if (startDate.value > endDate.value) {
     messageType.value = 'error'
     message.value = 'Start date cannot be after end date.'
     return false
   }
+
+  const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  if (days > 366) {
+    messageType.value = 'error'
+    message.value = 'Please select a range of 12 months or less.'
+    return false
+  }
+
   return true
 }
 

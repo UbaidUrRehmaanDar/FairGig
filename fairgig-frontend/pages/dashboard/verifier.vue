@@ -99,7 +99,7 @@
                   :src="previewUrl(item) || ''"
                   alt="Uploaded earnings screenshot"
                   loading="lazy"
-                  @error="handlePreviewError(item.id)"
+                  @error="handlePreviewError(item)"
                 />
                 <div v-else class="preview-empty">
                   <span class="icon">image_not_supported</span>
@@ -185,6 +185,7 @@ const verifiedCount = ref(0)
 const notes = reactive<Record<string, string>>({})
 const busy = reactive<Record<string, boolean>>({})
 const previewOverrides = reactive<Record<string, string | null>>({})
+const previewRetryAttempted = reactive<Record<string, boolean>>({})
 
 const flash = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -227,8 +228,11 @@ const effectiveRate = (item: PendingVerification) => {
   return toNumber(item.net_received) / hours
 }
 
+const hasPreviewOverride = (itemId: string) =>
+  Object.prototype.hasOwnProperty.call(previewOverrides, itemId)
+
 const previewUrl = (item: PendingVerification) => {
-  if (previewOverrides[item.id]) return previewOverrides[item.id]
+  if (hasPreviewOverride(item.id)) return previewOverrides[item.id]
   if (item.signed_preview_url) return item.signed_preview_url
   return null
 }
@@ -292,8 +296,8 @@ const ensureRoleAccess = async () => {
   return true
 }
 
-const fetchSignedPreview = async (item: PendingVerification) => {
-  if (previewUrl(item)) return
+const fetchSignedPreview = async (item: PendingVerification, force = false) => {
+  if (!force && (hasPreviewOverride(item.id) || item.signed_preview_url)) return
   if (!item.storage_path) return
 
   try {
@@ -303,6 +307,7 @@ const fetchSignedPreview = async (item: PendingVerification) => {
     const resolved = String(payload?.signed_url || '').trim()
     if (resolved) {
       previewOverrides[item.id] = resolved
+      previewRetryAttempted[item.id] = false
     }
   } catch {
     previewOverrides[item.id] = null
@@ -334,8 +339,13 @@ const refreshQueue = async () => {
   await loadPending(true)
 }
 
-const handlePreviewError = (itemId: string) => {
-  previewOverrides[itemId] = null
+const handlePreviewError = async (item: PendingVerification) => {
+  if (!previewRetryAttempted[item.id] && item.storage_path) {
+    previewRetryAttempted[item.id] = true
+    await fetchSignedPreview(item, true)
+    return
+  }
+  previewOverrides[item.id] = null
 }
 
 const review = async (item: PendingVerification, status: ReviewStatus) => {
@@ -359,6 +369,7 @@ const review = async (item: PendingVerification, status: ReviewStatus) => {
     queue.value = queue.value.filter((entry) => entry.id !== item.id)
     delete notes[item.id]
     delete previewOverrides[item.id]
+    delete previewRetryAttempted[item.id]
 
     const successLabel =
       status === 'verified'

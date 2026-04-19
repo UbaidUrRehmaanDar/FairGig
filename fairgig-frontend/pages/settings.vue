@@ -172,21 +172,16 @@
 definePageMeta({ middleware: 'auth' as any })
 
 import { onMounted, ref } from 'vue'
+import type { User } from '@supabase/supabase-js'
 import { useSupabaseClient } from '#imports'
 import { useApi } from '../composables/useApi'
 import { useShiftsStore } from '../stores/shifts'
-
-type SessionSnapshot = {
-  id: string
-  email: string | null
-  created_at: string | null
-}
 
 const supabase = useSupabaseClient()
 const { authFetch } = useApi()
 const shiftsStore = useShiftsStore()
 
-const user = ref<SessionSnapshot | null>(null)
+const user = ref<User | null>(null)
 
 const fullName = ref('')
 const cityZone = ref('')
@@ -239,9 +234,13 @@ const applyTheme = () => {
 }
 
 const saveLocalPreferences = () => {
+  const safeDefaultPlatform = platforms.includes(defaultPlatform.value) ? defaultPlatform.value : ''
+  const safePersona = ['worker', 'verifier', 'advocate'].includes(demoPersona.value)
+    ? demoPersona.value
+    : 'worker'
   try {
-    window.localStorage.setItem('fg_default_platform', defaultPlatform.value || '')
-    window.localStorage.setItem('fg_demo_persona', demoPersona.value)
+    window.localStorage.setItem('fg_default_platform', safeDefaultPlatform)
+    window.localStorage.setItem('fg_demo_persona', safePersona)
   } catch {
     // ignore
   }
@@ -256,21 +255,44 @@ const saveProfile = async () => {
   if (isSavingProfile.value) return
   profileMessage.value = ''
 
-  if (!fullName.value || !cityZone.value || !platformCategory.value) {
+  const normalizedName = fullName.value.replace(/\s+/g, ' ').trim()
+  if (!normalizedName || normalizedName.length < 2 || normalizedName.length > 80) {
     profileMessageType.value = 'error'
-    profileMessage.value = 'Please fill full name, work zone, and category.'
+    profileMessage.value = 'Full name must be between 2 and 80 characters.'
+    return
+  }
+
+  if (!cityZones.includes(cityZone.value)) {
+    profileMessageType.value = 'error'
+    profileMessage.value = 'Please select a valid work zone.'
+    return
+  }
+
+  const categoryValues = platformCategories.map((c) => c.value)
+  if (!categoryValues.includes(platformCategory.value)) {
+    profileMessageType.value = 'error'
+    profileMessage.value = 'Please select a valid platform category.'
     return
   }
 
   isSavingProfile.value = true
   try {
+    const roleCandidate =
+      (typeof user.value?.user_metadata?.role === 'string' && user.value.user_metadata.role) ||
+      (typeof user.value?.app_metadata?.role === 'string' && user.value.app_metadata.role) ||
+      'worker'
+
+    const role = ['worker', 'verifier', 'advocate'].includes(String(roleCandidate).toLowerCase())
+      ? String(roleCandidate).toLowerCase()
+      : 'worker'
+
     await authFetch('/auth/setup-profile', {
       method: 'POST',
       body: JSON.stringify({
-        full_name: fullName.value,
+        full_name: normalizedName,
         city_zone: cityZone.value,
         platform_category: platformCategory.value,
-        role: 'worker'
+        role
       })
     })
 
@@ -353,14 +375,7 @@ const signOut = async () => {
 
 onMounted(async () => {
   const { data } = await supabase.auth.getSession()
-  const currentUser = data.session?.user || null
-  user.value = currentUser
-    ? {
-        id: String(currentUser.id || ''),
-        email: typeof currentUser.email === 'string' ? currentUser.email : null,
-        created_at: typeof currentUser.created_at === 'string' ? currentUser.created_at : null,
-      }
-    : null
+  user.value = data.session?.user || null
 
   try {
     const t = window.localStorage.getItem('fg_theme')

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from auth_middleware import get_current_user
 from db import get_pool
@@ -25,6 +25,32 @@ class ProfileSetupIn(BaseModel):
     city_zone: str
     platform_category: str
     role: Literal["worker", "verifier", "advocate"]
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str) -> str:
+        cleaned = " ".join(str(value or "").split()).strip()
+        if len(cleaned) < 2 or len(cleaned) > 80:
+            raise ValueError("full_name must be between 2 and 80 characters")
+        return cleaned
+
+    @field_validator("city_zone")
+    @classmethod
+    def validate_city_zone(cls, value: str) -> str:
+        allowed = {"north", "central", "south", "east", "west", "unknown"}
+        cleaned = str(value or "").strip()
+        if cleaned.lower() not in allowed:
+            raise ValueError("city_zone is invalid")
+        return cleaned
+
+    @field_validator("platform_category")
+    @classmethod
+    def validate_platform_category(cls, value: str) -> str:
+        allowed = {"transport", "delivery", "courier", "other", "ride_hailing"}
+        cleaned = str(value or "").strip().lower()
+        if cleaned not in allowed:
+            raise ValueError("platform_category is invalid")
+        return cleaned
 
 
 @router.post("/setup-profile")

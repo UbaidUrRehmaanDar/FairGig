@@ -83,10 +83,22 @@ export const useApi = () => {
     const payload = isJson ? await response.json().catch(() => null) : await response.text()
 
     if (!response.ok) {
-      const detail =
-        payload && typeof payload === "object" && "detail" in payload
-          ? String((payload as any).detail)
-          : ""
+      let detail = ''
+      if (payload && typeof payload === 'object' && 'detail' in payload) {
+        const rawDetail = (payload as any).detail
+        if (typeof rawDetail === 'string') {
+          detail = rawDetail
+        } else if (Array.isArray(rawDetail)) {
+          const first = rawDetail[0]
+          if (first && typeof first === 'object') {
+            detail = String(first?.msg || first?.message || first?.type || '').trim()
+          } else {
+            detail = String(first || '').trim()
+          }
+        } else if (rawDetail && typeof rawDetail === 'object') {
+          detail = String(rawDetail?.msg || rawDetail?.message || '').trim()
+        }
+      }
       throw new Error(detail || `Request failed (${response.status})`)
     }
 

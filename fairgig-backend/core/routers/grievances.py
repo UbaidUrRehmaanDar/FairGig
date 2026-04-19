@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from auth_middleware import get_current_user, require_role
 from db import get_pool
@@ -30,6 +30,56 @@ class GrievanceIn(BaseModel):
     title: str
     description: str
     tags: List[str] = Field(default_factory=list)
+
+    @field_validator("platform")
+    @classmethod
+    def validate_platform(cls, value: str) -> str:
+        allowed = {"careem", "indrive", "bykea", "foodpanda", "cheetay", "other"}
+        cleaned = str(value or "").strip()
+        if cleaned.lower() not in allowed:
+            raise ValueError("platform is invalid")
+        return cleaned
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, value: str) -> str:
+        allowed = {"commission_change", "deactivation", "payment_delay", "other"}
+        cleaned = str(value or "").strip().lower()
+        if cleaned not in allowed:
+            raise ValueError("category is invalid")
+        return cleaned
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        cleaned = " ".join(str(value or "").split()).strip()
+        if len(cleaned) < 5 or len(cleaned) > 120:
+            raise ValueError("title must be between 5 and 120 characters")
+        return cleaned
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str) -> str:
+        cleaned = " ".join(str(value or "").split()).strip()
+        if len(cleaned) < 15 or len(cleaned) > 2000:
+            raise ValueError("description must be between 15 and 2000 characters")
+        return cleaned
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: List[str]) -> List[str]:
+        normalized: List[str] = []
+        for tag in value or []:
+            t = str(tag or "").strip().lower()
+            if not t:
+                continue
+            if len(t) > 24:
+                raise ValueError("each tag must be 24 characters or fewer")
+            if t not in normalized:
+                normalized.append(t)
+        if len(normalized) > 10:
+            raise ValueError("no more than 10 tags are allowed")
+        return normalized
 
 
 def _to_json(value: Any):

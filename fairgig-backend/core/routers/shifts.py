@@ -9,7 +9,7 @@ import os
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 
 from auth_middleware import require_role
 from db import get_pool
@@ -339,8 +339,74 @@ class ShiftIn(BaseModel):
     hours_worked: Optional[float] = None
     gross_earned: float
     platform_deductions: float = 0
-    net_received: float
+    net_received: Optional[float] = None
     notes: Optional[str] = None
+
+    @field_validator("platform")
+    @classmethod
+    def validate_platform(cls, value: str) -> str:
+        allowed = {"careem", "indrive", "bykea", "foodpanda", "cheetay", "other"}
+        cleaned = str(value or "").strip()
+        if cleaned.lower() not in allowed:
+            raise ValueError("platform is invalid")
+        return cleaned
+
+    @field_validator("hours_worked")
+    @classmethod
+    def validate_hours(cls, value: Optional[float]) -> Optional[float]:
+        if value is None:
+            return value
+        if value <= 0 or value > 24:
+            raise ValueError("hours_worked must be > 0 and <= 24")
+        return round(float(value), 2)
+
+    @field_validator("gross_earned")
+    @classmethod
+    def validate_gross(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("gross_earned must be greater than 0")
+        return round(float(value), 2)
+
+    @field_validator("platform_deductions")
+    @classmethod
+    def validate_deductions(cls, value: float) -> float:
+        if value < 0:
+            raise ValueError("platform_deductions cannot be negative")
+        return round(float(value), 2)
+
+    @field_validator("net_received")
+    @classmethod
+    def validate_net(cls, value: Optional[float]) -> Optional[float]:
+        if value is None:
+            return value
+        if value < 0:
+            raise ValueError("net_received cannot be negative")
+        return round(float(value), 2)
+
+    @field_validator("notes")
+    @classmethod
+    def validate_notes(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = " ".join(str(value).split()).strip()
+        if len(cleaned) > 500:
+            raise ValueError("notes must be 500 characters or fewer")
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_consistency(self):
+        if self.shift_date > date.today():
+            raise ValueError("shift_date cannot be in the future")
+        if self.platform_deductions > self.gross_earned:
+            raise ValueError("platform_deductions cannot exceed gross_earned")
+        computed_net = round(float(self.gross_earned) - float(self.platform_deductions), 2)
+        if self.net_received is None:
+            self.net_received = computed_net
+        elif round(float(self.net_received), 2) != computed_net:
+            raise ValueError("net_received must equal gross_earned minus platform_deductions")
+        if self.net_received > self.gross_earned:
+            raise ValueError("net_received cannot exceed gross_earned")
+        return self
 
 
 @router.post("/")
@@ -361,9 +427,10 @@ async def log_shift(shift: ShiftIn, user=Depends(require_role("worker"))):
                 gross_earned,
                 platform_deductions,
                 net_received,
-                notes
+                notes,
+                verification_status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'verified')
             RETURNING id
             """,
             user["id"],

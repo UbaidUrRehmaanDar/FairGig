@@ -110,6 +110,7 @@ import { useGrievancesStore } from '../../stores/grievances'
 const grievancesStore = useGrievancesStore()
 
 const platforms = ['Careem', 'InDrive', 'Bykea', 'Foodpanda', 'Cheetay', 'Other']
+const categories = ['commission_change', 'deactivation', 'payment_delay', 'other']
 
 const form = reactive({
   platform: '',
@@ -137,11 +138,29 @@ const validate = () => {
   errors.description = ''
 
   if (!form.platform) errors.platform = 'Platform is required.'
+  if (form.platform && !platforms.includes(form.platform)) {
+    errors.platform = 'Please select a valid platform.'
+  }
+
   if (!form.category) errors.category = 'Category is required.'
-  if (!form.title) errors.title = 'Title is required.'
-  if (form.title.length > 120) errors.title = 'Title should be under 120 characters.'
-  if (!form.description) errors.description = 'Description is required.'
-  if (form.description.length < 15) errors.description = 'Please provide more detail (min 15 chars).'
+  if (form.category && !categories.includes(form.category)) {
+    errors.category = 'Please select a valid category.'
+  }
+
+  const normalizedTitle = form.title.replace(/\s+/g, ' ').trim()
+  const normalizedDescription = form.description.replace(/\s+/g, ' ').trim()
+
+  if (!normalizedTitle) errors.title = 'Title is required.'
+  if (normalizedTitle.length < 5 || normalizedTitle.length > 120) {
+    errors.title = 'Title should be 5 to 120 characters.'
+  }
+  if (!normalizedDescription) errors.description = 'Description is required.'
+  if (normalizedDescription.length < 15 || normalizedDescription.length > 2000) {
+    errors.description = 'Description should be 15 to 2000 characters.'
+  }
+
+  form.title = normalizedTitle
+  form.description = normalizedDescription
 
   return !Object.values(errors).some(Boolean)
 }
@@ -156,6 +175,19 @@ const submit = async () => {
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean)
+    .map((t) => t.toLowerCase())
+
+  const uniqueTags = Array.from(new Set(tags))
+  if (uniqueTags.length > 10) {
+    messageType.value = 'error'
+    message.value = 'Use up to 10 tags only.'
+    return
+  }
+  if (uniqueTags.some((t) => t.length > 24)) {
+    messageType.value = 'error'
+    message.value = 'Each tag must be 24 characters or fewer.'
+    return
+  }
 
   isSubmitting.value = true
   try {
@@ -164,7 +196,7 @@ const submit = async () => {
       category: form.category,
       title: form.title,
       description: form.description,
-      tags
+      tags: uniqueTags
     })
 
     messageType.value = 'success'

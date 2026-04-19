@@ -176,11 +176,6 @@
       </div>
     </main>
 
-    <div class="support-fab">
-      <button>
-        <span class="icon">help_outline</span>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -929,48 +924,11 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-.support-fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  z-index: 50;
-}
-
-.support-fab button {
-  width: 3.5rem;
-  height: 3.5rem;
-  background-color: var(--fg-surface);
-  box-shadow: var(--fg-shadow);
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--fg-primary);
-  border: 1px solid var(--fg-border);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.support-fab button:hover {
-  background-color: var(--fg-primary);
-  color: #f2f1ff;
-}
-
-.support-fab .icon {
-  font-size: 1.5rem;
-  transition: transform 0.3s;
-}
-
-.support-fab button:hover .icon {
-  transform: scale(1.1);
-}
-
 /* Motion reduce */
 @media (prefers-reduced-motion: reduce) {
   .primary-button,
   .theme-toggle,
-  .support-fab button,
-  .support-fab .icon {
+  .icon-button {
     transition: none !important;
   }
 }
@@ -979,7 +937,7 @@ onMounted(async () => {
 @media (max-width: 1023px) {
   .right-section {
     align-items: flex-start;
-    padding: 1rem 1rem 5.75rem;
+    padding: 1rem;
   }
 
   .form-container {
@@ -1022,20 +980,11 @@ onMounted(async () => {
     padding-bottom: 0.25rem;
   }
 
-  .support-fab {
-    right: 1rem;
-    bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-
-  .support-fab button {
-    width: 3.1rem;
-    height: 3.1rem;
-  }
 }
 
 @media (max-width: 480px) {
   .right-section {
-    padding: 0.9rem 0.85rem 5.5rem;
+    padding: 0.9rem 0.85rem;
   }
 
   .primary-button,
@@ -1062,15 +1011,9 @@ onMounted(async () => {
   }
 
   .theme-toggle:hover,
-  .support-fab button:hover {
+  .icon-button:hover {
     transform: none;
     filter: none;
-    background-color: var(--fg-surface);
-    color: var(--fg-primary);
-  }
-
-  .support-fab button:hover .icon {
-    transform: none;
   }
 }
 

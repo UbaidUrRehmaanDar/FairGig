@@ -95,15 +95,14 @@
                 <span class="icon">account_balance_wallet</span>
                 <input
                   id="net-received"
-                  v-model.number="form.net_received"
-                  type="number"
-                  min="0"
-                  step="1"
-                  :aria-invalid="!!errors.net_received"
-                  placeholder="e.g. 4000"
+                  :value="formatCurrency(autoNetReceived)"
+                  type="text"
+                  readonly
+                  aria-readonly="true"
+                  tabindex="-1"
                 />
               </div>
-              <p v-if="errors.net_received" class="field-error">{{ errors.net_received }}</p>
+              <p class="field-hint">Auto-calculated as gross earned minus platform deductions.</p>
             </div>
           </div>
 
@@ -174,7 +173,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' as any })
 
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useShiftsStore } from '../../stores/shifts'
 import { useApi } from '../../composables/useApi'
 
@@ -210,6 +209,18 @@ const selectedFile = ref<File | null>(null)
 const screenshotPreviewUrl = ref<string | null>(null)
 const fileInputKey = ref(0)
 
+const autoNetReceived = computed(() => {
+  const gross = Number(form.gross_earned ?? 0)
+  const deductions = Number(form.platform_deductions ?? 0)
+  return Math.max(0, gross - deductions)
+})
+
+const formatCurrency = (value: number | null | undefined) => {
+  const parsed = Number(value ?? 0)
+  if (!Number.isFinite(parsed)) return '0'
+  return parsed.toLocaleString('en-PK')
+}
+
 const clearSelectedFile = () => {
   selectedFile.value = null
   if (screenshotPreviewUrl.value) {
@@ -242,12 +253,24 @@ const validate = () => {
   errors.hours_worked = ''
   errors.gross_earned = ''
   errors.platform_deductions = ''
-  errors.net_received = ''
 
   if (!form.platform) errors.platform = 'Platform is required.'
-  if (!form.shift_date) errors.shift_date = 'Shift date is required.'
-  if (form.hours_worked !== null && Number(form.hours_worked) < 0) {
-    errors.hours_worked = 'Hours worked cannot be negative.'
+  if (!form.shift_date) {
+    errors.shift_date = 'Shift date is required.'
+  } else {
+    const selected = new Date(`${form.shift_date}T00:00:00`)
+    const now = new Date()
+    if (Number.isNaN(selected.getTime())) {
+      errors.shift_date = 'Shift date is invalid.'
+    } else if (selected > now) {
+      errors.shift_date = 'Shift date cannot be in the future.'
+    }
+  }
+  if (form.hours_worked !== null && Number(form.hours_worked) <= 0) {
+    errors.hours_worked = 'Hours worked must be greater than 0.'
+  }
+  if (form.hours_worked !== null && Number(form.hours_worked) > 24) {
+    errors.hours_worked = 'Hours worked cannot exceed 24.'
   }
   if (form.gross_earned === null || Number(form.gross_earned) <= 0) {
     errors.gross_earned = 'Gross earned must be greater than 0.'
@@ -255,15 +278,17 @@ const validate = () => {
   if (form.platform_deductions !== null && Number(form.platform_deductions) < 0) {
     errors.platform_deductions = 'Deductions cannot be negative.'
   }
-  if (form.net_received === null || Number(form.net_received) < 0) {
-    errors.net_received = 'Net received cannot be negative.'
-  }
   if (
     form.gross_earned !== null &&
-    form.net_received !== null &&
-    Number(form.net_received) > Number(form.gross_earned)
+    form.platform_deductions !== null &&
+    Number(form.platform_deductions) > Number(form.gross_earned)
   ) {
-    errors.net_received = 'Net received cannot exceed gross earned.'
+    errors.platform_deductions = 'Deductions cannot exceed gross earned.'
+  }
+  if (form.notes && form.notes.trim().length > 500) {
+    messageType.value = 'error'
+    message.value = 'Notes must be 500 characters or fewer.'
+    return false
   }
 
   return !Object.values(errors).some(Boolean)
@@ -283,7 +308,7 @@ const submit = async () => {
       hours_worked: form.hours_worked,
       gross_earned: Number(form.gross_earned),
       platform_deductions: Number(form.platform_deductions || 0),
-      net_received: Number(form.net_received),
+      net_received: Number(autoNetReceived.value),
       notes: form.notes || null
     }
 

@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from auth_middleware import require_role
 from db import get_pool
@@ -23,6 +23,23 @@ class VulnerabilityFlagDeletePayload(BaseModel):
     worker_id: UUID
     platform: str
     shift_date: date
+
+    @field_validator("platform")
+    @classmethod
+    def validate_platform(cls, value: str) -> str:
+        cleaned = str(value or "").strip()
+        if not cleaned:
+            raise ValueError("platform is required")
+        if len(cleaned) > 40:
+            raise ValueError("platform is too long")
+        return cleaned
+
+    @field_validator("shift_date")
+    @classmethod
+    def validate_shift_date(cls, value: date) -> date:
+        if value > date.today():
+            raise ValueError("shift_date cannot be in the future")
+        return value
 
 
 def _to_json(value: Any):
