@@ -1,3 +1,39 @@
+/* RTL Support */
+html {
+  direction: ltr;
+}
+
+html[lang="ur"],
+html[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+html[lang="en"],
+html[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* RTL-aware form elements */
+[dir="rtl"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+[dir="rtl"] select,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+/* RTL-aware margin/padding flip */
+[dir="rtl"] {
+  --fg-page-padding: 2rem;
+  --fg-mobile-padding: 1rem;
+}
+
+/* RTL button flex direction */
+[dir="rtl"] button[class*="flex"],
+[dir="rtl"] a[class*="flex"] {
+  flex-direction: row-reverse;
+}
+
 :root {
   --fg-form-font-weight: 600;
 

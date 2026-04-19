@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from db import close_pool, get_pool
-from routers import analytics, auth, certificates, grievances, screenshots, shifts
+from routers import analytics, auth, certificates, screenshots, shifts
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -80,7 +80,6 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(shifts.router, prefix="/shifts", tags=["shifts"])
 app.include_router(screenshots.router, prefix="/screenshots", tags=["screenshots"])
-app.include_router(grievances.router, prefix="/grievances", tags=["grievances"])
 app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(certificates.router, prefix="/certificates", tags=["certificates"])
 

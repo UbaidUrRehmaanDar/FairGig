@@ -33,6 +33,14 @@
       <section class="panel-card">
         <div class="panel-header">
           <h2>⚠ Vulnerability Flags (Income Drop &gt; 20%)</h2>
+          <button
+            type="button"
+            class="danger-action"
+            :disabled="loading || deletingAllFlags || !kpis?.vulnerability_flags?.length"
+            @click="deleteAllFlags"
+          >
+            {{ deletingAllFlags ? 'Deleting...' : 'Delete All Flags' }}
+          </button>
         </div>
 
         <div v-if="loading" class="panel-state">Loading flags...</div>
@@ -54,6 +62,14 @@
             <p>Shift date: {{ formatDate(flag.shift_date) }}</p>
             <p>Previous net: PKR {{ formatNum(flag.prev_net_received) }}</p>
             <p>Current net: PKR {{ formatNum(flag.net_received) }}</p>
+            <button
+              type="button"
+              class="delete-flag-btn"
+              :disabled="deletingFlagKey === flagKey(flag)"
+              @click="deleteFlag(flag)"
+            >
+              {{ deletingFlagKey === flagKey(flag) ? 'Deleting...' : 'Delete Flag' }}
+            </button>
           </article>
         </div>
       </section>
@@ -135,23 +151,50 @@
       </section>
     </main>
 
-    <div class="support-fab">
-      <button type="button">
-        <span class="icon">help_outline</span>
-      </button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' as any })
 
-import { storeToRefs } from 'pinia'
+import { onMounted, ref } from 'vue'
 
-import { useAnalyticsStore } from '../../stores/analytics'
+type AnalyticsKpis = {
+  commission_trends: Array<{
+    shift_date: string
+    avg_commission_pct: number
+    sample_size: number
+  }>
+  income_by_zone: Array<{
+    city_zone: string
+    total_net_received: number
+    avg_net_received: number
+    sample_size: number
+    worker_count: number
+  }>
+  vulnerability_flags: Array<{
+    worker_id: string
+    full_name?: string | null
+    city_zone?: string | null
+    platform: string
+    shift_date: string
+    prev_net_received: number
+    net_received: number
+    income_drop_pct: number
+  }>
+  top_complaints: Array<{
+    category: string
+    total_count: number
+    total_upvotes: number
+  }>
+}
 
-const analyticsStore = useAnalyticsStore()
-const { loading, kpis } = storeToRefs(analyticsStore)
+const { authFetch } = useApi()
+
+const loading = ref(false)
+const kpis = ref<AnalyticsKpis | null>(null)
+const deletingAllFlags = ref(false)
+const deletingFlagKey = ref('')
 
 const shortId = (value?: string) => {
   const v = String(value || '')
@@ -176,11 +219,64 @@ const formatPct = (n: number | string | null | undefined) => {
   return value.toFixed(1)
 }
 
-const loadKpis = async () => {
-  await analyticsStore.fetchKPIs()
+const flagKey = (flag: AnalyticsKpis['vulnerability_flags'][number]) => {
+  return `${flag.worker_id}-${flag.shift_date}-${flag.platform}`
 }
 
-await loadKpis()
+const loadKpis = async () => {
+  loading.value = true
+  try {
+    const data = await authFetch<Partial<AnalyticsKpis>>('/analytics/kpis')
+    kpis.value = {
+      commission_trends: Array.isArray(data?.commission_trends) ? data.commission_trends : [],
+      income_by_zone: Array.isArray(data?.income_by_zone) ? data.income_by_zone : [],
+      vulnerability_flags: Array.isArray(data?.vulnerability_flags) ? data.vulnerability_flags : [],
+      top_complaints: Array.isArray(data?.top_complaints) ? data.top_complaints : []
+    }
+  } catch {
+    kpis.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+const deleteFlag = async (flag: AnalyticsKpis['vulnerability_flags'][number]) => {
+  const confirmed = window.confirm('Delete this vulnerability flag from the database?')
+  if (!confirmed) return
+
+  const key = flagKey(flag)
+  deletingFlagKey.value = key
+  try {
+    await authFetch('/analytics/vulnerability-flags', {
+      method: 'DELETE',
+      body: {
+        worker_id: flag.worker_id,
+        platform: flag.platform,
+        shift_date: flag.shift_date,
+      },
+    })
+    await loadKpis()
+  } finally {
+    deletingFlagKey.value = ''
+  }
+}
+
+const deleteAllFlags = async () => {
+  const confirmed = window.confirm('Delete ALL vulnerability flags from the database?')
+  if (!confirmed) return
+
+  deletingAllFlags.value = true
+  try {
+    await authFetch('/analytics/vulnerability-flags/all', { method: 'DELETE' })
+    await loadKpis()
+  } finally {
+    deletingAllFlags.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadKpis()
+})
 </script>
 
 <style scoped>
@@ -189,7 +285,6 @@ await loadKpis()
   background: var(--fg-bg);
   color: var(--fg-text);
   font-family: 'Raleway', sans-serif;
-  overflow-x: clip;
 }
 
 .dashboard-main {
@@ -207,17 +302,20 @@ await loadKpis()
   align-items: flex-start;
   gap: 1.25rem;
 }
+
 .page-header h1 {
   font-size: 1.85rem;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
+
 .page-header p {
   margin-top: 0.35rem;
   color: var(--fg-muted);
   font-size: 1rem;
   font-weight: 600;
 }
+
 .header-action {
   border: none;
   border-radius: 9999px;
@@ -229,11 +327,13 @@ await loadKpis()
   transition: all 0.2s ease;
   white-space: nowrap;
 }
+
 .header-action:hover:not(:disabled) {
   transform: translateY(-1px);
   filter: brightness(1.1);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--fg-primary) 20%, transparent);
 }
+
 .header-action:disabled {
   background: var(--fg-muted);
   opacity: 0.7;
@@ -245,43 +345,76 @@ await loadKpis()
   gap: 1rem;
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
-.kpi-card {
-  background: var(--fg-surface);
-  border: 1px solid var(--fg-border);
-  border-radius: 1.25rem;
-  padding: 1.25rem;
-  box-shadow: var(--fg-shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.card-label {
-  color: var(--fg-muted);
-  font-size: 0.86rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.card-value {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--fg-text);
-}
 
+.kpi-card,
 .panel-card {
-  background: var(--fg-surface);
   border: 1px solid var(--fg-border);
   border-radius: 1.25rem;
   padding: 1.25rem;
   box-shadow: var(--fg-shadow);
   min-width: 0;
   overflow: hidden;
+  background: var(--fg-surface);
 }
+
+.card-label,
 .panel-header h2 {
-  font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.card-label {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.card-value {
+  margin-top: 0.5rem;
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.panel-header h2 {
+  font-size: 1.15rem;
+}
+
+.danger-action,
+.delete-flag-btn {
+  border: 1px solid color-mix(in srgb, var(--fg-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--fg-danger) 10%, transparent);
+  color: var(--fg-danger);
+  font-weight: 800;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.danger-action {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.delete-flag-btn {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+}
+
+.danger-action:disabled,
+.delete-flag-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .panel-state {
   margin-top: 1rem;
   color: var(--fg-muted);
@@ -290,29 +423,41 @@ await loadKpis()
   padding: 2rem 0;
 }
 
-.flag-list {
+.flag-list,
+.zone-grid,
+.complaint-list {
   margin-top: 1rem;
   display: grid;
   gap: 1rem;
 }
-.flag-card {
+
+.flag-card,
+.zone-card,
+.complaint-row {
   border: 1px solid var(--fg-border);
   border-radius: 1rem;
   padding: 1rem;
   background: var(--fg-surface-muted);
-  transition: transform 0.2s ease;
 }
+
 .flag-card:hover {
   border-color: var(--fg-danger);
 }
-.flag-top {
+
+.flag-top,
+.complaint-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
 }
-.flag-top strong {
+
+.flag-top strong,
+.zone-card h3,
+.complaint-row .platform {
   font-weight: 800;
 }
+
 .drop-pill {
   background: color-mix(in srgb, var(--fg-danger) 10%, transparent);
   color: var(--fg-danger);
@@ -321,7 +466,10 @@ await loadKpis()
   font-size: 0.8rem;
   font-weight: 800;
 }
-.flag-card p {
+
+.flag-card p,
+.zone-card p,
+.complaint-row .category {
   margin-top: 0.5rem;
   color: var(--fg-muted);
   font-size: 0.92rem;
@@ -336,11 +484,13 @@ await loadKpis()
   width: 100%;
   min-width: 0;
 }
+
 table {
   width: 100%;
   border-collapse: collapse;
   min-width: 500px;
 }
+
 th,
 td {
   text-align: left;
@@ -348,6 +498,7 @@ td {
   padding: 1rem;
   font-size: 0.92rem;
 }
+
 th {
   background: var(--fg-surface-muted);
   color: var(--fg-muted);
@@ -356,6 +507,7 @@ th {
   font-size: 0.75rem;
   letter-spacing: 0.05em;
 }
+
 .high {
   color: var(--fg-danger);
   font-weight: 900;
@@ -367,104 +519,39 @@ th {
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
-.zone-grid {
-  margin-top: 1rem;
-  display: grid;
-  gap: 1rem;
-}
-.zone-card {
-  border: 1px solid var(--fg-border);
-  border-radius: 1rem;
-  padding: 1rem;
-  background: var(--fg-surface-muted);
-}
-.zone-card h3 {
-  font-size: 1rem;
-  font-weight: 800;
-}
-.zone-card p {
-  margin-top: 0.5rem;
-  color: var(--fg-muted);
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-.zone-card strong {
+.zone-card strong,
+.complaint-row .count {
   color: var(--fg-text);
   font-weight: 800;
 }
 
-.complaint-list {
-  margin-top: 1rem;
-  display: grid;
-  gap: 0.75rem;
-}
-.complaint-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  border: 1px solid var(--fg-border);
-  border-radius: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--fg-surface-muted);
-  min-width: 0;
-}
-.complaint-row .platform {
-  font-weight: 800;
-  font-size: 0.9rem;
-}
 .complaint-row .category {
-  color: var(--fg-muted);
-  font-size: 0.86rem;
-  font-weight: 700;
   flex: 1;
   min-width: 0;
+  margin-top: 0;
 }
+
 .complaint-row .count {
   background: var(--fg-surface);
   border: 1px solid var(--fg-border);
   border-radius: 9999px;
   padding: 0.35rem 0.75rem;
   font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--fg-primary);
   white-space: normal;
   overflow-wrap: anywhere;
   max-width: 100%;
-}
-
-.support-fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  z-index: 50;
-}
-.support-fab button {
-  width: 3.5rem;
-  height: 3.5rem;
-  background: var(--fg-surface);
-  border: 1px solid var(--fg-border);
-  border-radius: 9999px;
-  color: var(--fg-primary);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.support-fab button:hover {
-  transform: scale(1.05);
 }
 
 @media (min-width: 700px) {
   .kpi-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
   .zone-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
 @media (min-width: 1024px) {
   .split-panels {
     grid-template-columns: 1.2fr 1fr;
@@ -476,18 +563,27 @@ th {
     flex-direction: column;
     align-items: stretch;
   }
+
   .header-action {
     width: 100%;
     margin-top: 0.5rem;
   }
+
   .card-value {
     font-size: 1.5rem;
   }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .complaint-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.35rem;
   }
+
   .complaint-row .count {
     align-self: stretch;
     margin-top: 0.25rem;

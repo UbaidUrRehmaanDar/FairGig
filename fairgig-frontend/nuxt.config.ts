@@ -48,6 +48,7 @@ export default defineNuxtConfig({
     public: {
       apiBase: "http://127.0.0.1:8000",
       anomalyBase: "http://127.0.0.1:8001",
+      grievanceBase: "http://127.0.0.1:3002",
     },
   },
 })

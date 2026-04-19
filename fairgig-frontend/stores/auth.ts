@@ -1,4 +1,3 @@
-import type { User } from '@supabase/supabase-js'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -11,7 +10,7 @@ const normalizeRole = (value: unknown): FairGigRole => {
   return 'worker'
 }
 
-const resolveRoleFromUser = (user: User | null | undefined): FairGigRole => {
+const resolveRoleFromUser = (user: any): FairGigRole => {
   const candidate =
     (typeof user?.user_metadata?.role === 'string' && user.user_metadata.role) ||
     (typeof user?.app_metadata?.role === 'string' && user.app_metadata.role) ||
@@ -34,18 +33,17 @@ const readDemoPersona = (): FairGigRole | null => {
 export const useAuthStore = defineStore('auth', () => {
   const supabase = useSupabaseClient()
 
-  const user = ref<User | null>(null)
   const role = ref<FairGigRole>('worker')
   const initialized = ref(false)
 
-  const isAuthenticated = computed(() => Boolean(user.value))
+  const isAuthenticated = computed(() => Boolean(initialized.value))
 
   const refreshSession = async () => {
     const { data } = await supabase.auth.getSession()
-    user.value = data.session?.user || null
-    role.value = readDemoPersona() || resolveRoleFromUser(user.value)
+    const sessionUser = data.session?.user || null
+    role.value = readDemoPersona() || resolveRoleFromUser(sessionUser)
     initialized.value = true
-    return { user: user.value, role: role.value }
+    return { role: role.value }
   }
 
   // Load demo persona for UI routing if available (does not affect backend permissions).
@@ -72,14 +70,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const signOut = async () => {
     const result = await supabase.auth.signOut()
-    user.value = null
     role.value = 'worker'
     initialized.value = true
     return result
   }
 
   return {
-    user,
     role,
     initialized,
     isAuthenticated,

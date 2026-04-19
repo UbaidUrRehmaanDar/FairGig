@@ -2,6 +2,7 @@ export const useApi = () => {
   const config = useRuntimeConfig()
   const supabase = useSupabaseClient()
   const apiBase = String(config.public.apiBase || "http://127.0.0.1:8000").replace(/\/$/, "")
+  const grievanceBase = String(config.public.grievanceBase || apiBase).replace(/\/$/, "")
 
   const buildCandidateBases = (primary: string) => {
     const bases = [primary]
@@ -47,7 +48,8 @@ export const useApi = () => {
     }
 
     const normalizedPath = path.startsWith("/") ? path : `/${path}`
-    const candidateBases = buildCandidateBases(apiBase)
+    const serviceBase = normalizedPath.startsWith('/grievances') ? grievanceBase : apiBase
+    const candidateBases = buildCandidateBases(serviceBase)
 
     let response: Response | null = null
     let lastNetworkError: unknown = null

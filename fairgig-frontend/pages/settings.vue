@@ -172,16 +172,21 @@
 definePageMeta({ middleware: 'auth' as any })
 
 import { onMounted, ref } from 'vue'
-import type { User } from '@supabase/supabase-js'
 import { useSupabaseClient } from '#imports'
 import { useApi } from '../composables/useApi'
 import { useShiftsStore } from '../stores/shifts'
+
+type SessionSnapshot = {
+  id: string
+  email: string | null
+  created_at: string | null
+}
 
 const supabase = useSupabaseClient()
 const { authFetch } = useApi()
 const shiftsStore = useShiftsStore()
 
-const user = ref<User | null>(null)
+const user = ref<SessionSnapshot | null>(null)
 
 const fullName = ref('')
 const cityZone = ref('')
@@ -348,7 +353,14 @@ const signOut = async () => {
 
 onMounted(async () => {
   const { data } = await supabase.auth.getSession()
-  user.value = data.session?.user || null
+  const currentUser = data.session?.user || null
+  user.value = currentUser
+    ? {
+        id: String(currentUser.id || ''),
+        email: typeof currentUser.email === 'string' ? currentUser.email : null,
+        created_at: typeof currentUser.created_at === 'string' ? currentUser.created_at : null,
+      }
+    : null
 
   try {
     const t = window.localStorage.getItem('fg_theme')

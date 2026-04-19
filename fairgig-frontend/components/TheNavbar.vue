@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '~/stores/auth'
+import { useLanguage } from '~/composables/useLanguage'
 
 const authStore = useAuthStore()
 const { role } = storeToRefs(authStore)
+const { t, isUrdu } = useLanguage()
 </script>
 
 <template>
@@ -12,19 +14,19 @@ const { role } = storeToRefs(authStore)
     <template v-if="role === 'worker'">
       <NuxtLink to="/dashboard/worker" class="nav-item">
         <span class="material-symbols-outlined">dashboard</span>
-        <span class="text">Home</span>
+        <span class="text">{{ t('nav.home') }}</span>
       </NuxtLink>
       <NuxtLink to="/shifts" class="nav-item">
         <span class="material-symbols-outlined">schedule</span>
-        <span class="text">Shifts</span>
+        <span class="text">{{ t('nav.shifts') }}</span>
       </NuxtLink>
       <NuxtLink to="/grievances" class="nav-item">
         <span class="material-symbols-outlined">campaign</span>
-        <span class="text">Grievances</span>
+        <span class="text">{{ t('nav.grievances') }}</span>
       </NuxtLink>
       <NuxtLink to="/certificate" class="nav-item">
         <span class="material-symbols-outlined">description</span>
-        <span class="text">Docs</span>
+        <span class="text">{{ t('nav.docs') }}</span>
       </NuxtLink>
     </template>
 
@@ -32,11 +34,11 @@ const { role } = storeToRefs(authStore)
     <template v-else-if="role === 'advocate'">
       <NuxtLink to="/dashboard/advocate" class="nav-item">
         <span class="material-symbols-outlined">monitoring</span>
-        <span class="text">Analytics</span>
+        <span class="text">{{ t('nav.analytics') }}</span>
       </NuxtLink>
       <NuxtLink to="/grievances" class="nav-item">
         <span class="material-symbols-outlined">campaign</span>
-        <span class="text">Grievances</span>
+        <span class="text">{{ t('nav.grievances') }}</span>
       </NuxtLink>
       <NuxtLink to="/settings" class="nav-item">
         <span class="material-symbols-outlined">settings</span>
@@ -48,11 +50,11 @@ const { role } = storeToRefs(authStore)
     <template v-else-if="role === 'verifier'">
       <NuxtLink to="/dashboard/verifier" class="nav-item">
         <span class="material-symbols-outlined">verified</span>
-        <span class="text">Verify</span>
+        <span class="text">{{ t('nav.verify') }}</span>
       </NuxtLink>
       <NuxtLink to="/settings" class="nav-item">
         <span class="material-symbols-outlined">settings</span>
-        <span class="text">Settings</span>
+        <span class="text">{{ t('nav.settings') }}</span>
       </NuxtLink>
     </template>
   </nav>
@@ -98,6 +100,8 @@ const { role } = storeToRefs(authStore)
 .nav-item .text {
   font-size: 0.7rem;
   font-weight: 700;
+  word-wrap: break-word;
+  max-width: 4rem;
   font-family: 'Raleway', sans-serif;
 }
 

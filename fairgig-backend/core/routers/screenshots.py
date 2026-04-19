@@ -363,6 +363,8 @@ async def pending_screenshots(user=Depends(require_role("verifier", "advocate"))
         JOIN shifts s ON s.id = es.shift_id
         LEFT JOIN profiles p ON p.id = es.worker_id
         WHERE es.status = 'pending'
+                    AND es.storage_path IS NOT NULL
+                    AND es.storage_path <> ''
         ORDER BY es.created_at ASC
         LIMIT 100
         """

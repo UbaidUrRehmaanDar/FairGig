@@ -285,7 +285,7 @@ const ensureRoleAccess = async () => {
 
   const role = resolveRole(sessionUser)
   if (role !== 'verifier' && role !== 'advocate') {
-    await navigateTo('/dashboard/worker')
+    await navigateTo(role === 'advocate' ? '/dashboard/advocate' : '/dashboard/worker')
     return false
   }
 

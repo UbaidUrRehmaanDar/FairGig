@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 from auth_middleware import require_role
 from db import get_pool
@@ -16,6 +17,12 @@ except ModuleNotFoundError:  # pragma: no cover
     asyncpg = None
 
 router = APIRouter()
+
+
+class VulnerabilityFlagDeletePayload(BaseModel):
+    worker_id: UUID
+    platform: str
+    shift_date: date
 
 
 def _to_json(value: Any):
@@ -129,3 +136,82 @@ async def kpis(user=Depends(require_role("advocate"))):
         "vulnerability_flags": [_serialize_row(row) for row in vulnerability_rows],
         "top_complaints": [_serialize_row(row) for row in top_complaints_rows],
     }
+
+
+@router.delete("/vulnerability-flags")
+async def delete_vulnerability_flag(
+    payload: VulnerabilityFlagDeletePayload,
+    user=Depends(require_role("advocate")),
+):
+    pool = await get_pool()
+    result = await pool.execute(
+        """
+        WITH ordered AS (
+            SELECT
+                s.id,
+                s.worker_id,
+                s.platform,
+                s.shift_date,
+                s.net_received,
+                LAG(s.net_received) OVER (
+                    PARTITION BY s.worker_id
+                    ORDER BY s.shift_date, s.created_at
+                ) AS prev_net_received
+            FROM shifts s
+        ),
+        flagged AS (
+            SELECT o.id
+            FROM ordered o
+            WHERE o.worker_id = $1
+              AND o.platform = $2
+              AND o.shift_date = $3
+              AND o.prev_net_received IS NOT NULL
+              AND o.prev_net_received > 0
+              AND ((o.prev_net_received - o.net_received) / o.prev_net_received) > 0.20
+        )
+        DELETE FROM shifts s
+        USING flagged f
+        WHERE s.id = f.id
+        """,
+        payload.worker_id,
+        payload.platform,
+        payload.shift_date,
+    )
+
+    deleted_count = int(str(result).split(" ")[-1]) if result else 0
+    return {"deleted_count": deleted_count}
+
+
+@router.delete("/vulnerability-flags/all")
+async def delete_all_vulnerability_flags(user=Depends(require_role("advocate"))):
+    pool = await get_pool()
+    result = await pool.execute(
+        """
+        WITH ordered AS (
+            SELECT
+                s.id,
+                s.worker_id,
+                s.platform,
+                s.shift_date,
+                s.net_received,
+                LAG(s.net_received) OVER (
+                    PARTITION BY s.worker_id
+                    ORDER BY s.shift_date, s.created_at
+                ) AS prev_net_received
+            FROM shifts s
+        ),
+        flagged AS (
+            SELECT o.id
+            FROM ordered o
+            WHERE o.prev_net_received IS NOT NULL
+              AND o.prev_net_received > 0
+              AND ((o.prev_net_received - o.net_received) / o.prev_net_received) > 0.20
+        )
+        DELETE FROM shifts s
+        USING flagged f
+        WHERE s.id = f.id
+        """
+    )
+
+    deleted_count = int(str(result).split(" ")[-1]) if result else 0
+    return {"deleted_count": deleted_count}

@@ -3,8 +3,8 @@
     <main class="dashboard-main">
       <section class="dashboard-hero">
         <div class="hero-copy">
-          <p class="hero-eyebrow">Worker Dashboard</p>
-          <h1>Salam, {{ displayName }}</h1>
+          <p class="hero-eyebrow">{{ t('dashboard.worker') }}</p>
+          <h1>{{ t('worker.greeting') }}, {{ displayName }}</h1>
           <p class="hero-subtext">{{ cityLabel }} · {{ workerTrackLabel }}</p>
         </div>
 
@@ -16,30 +16,30 @@
 
       <section class="summary-grid" v-if="!summaryLoading">
         <article class="summary-card">
-          <div class="card-label">This Month</div>
-          <div class="card-value">Rs {{ formatMoney(summary?.this_month) }}</div>
-          <p class="card-helper">All earnings in the current month</p>
+          <div class="card-label">{{ t('dashboard.thisMonth') }}</div>
+          <div class="card-value">{{ t('worker.pairCurrencyRs') }} {{ formatMoney(summary?.this_month) }}</div>
+          <p class="card-helper">{{ t('worker.earningsThisMonth') }}</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">This Week</div>
-          <div class="card-value">Rs {{ formatMoney(summary?.this_week) }}</div>
-          <p class="card-helper">Current week total</p>
+          <div class="card-label">{{ t('dashboard.thisWeek') }}</div>
+          <div class="card-value">{{ t('worker.pairCurrencyRs') }} {{ formatMoney(summary?.this_week) }}</div>
+          <p class="card-helper">{{ t('worker.currentWeekTotal') }}</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">Avg Hourly</div>
+          <div class="card-label">{{ t('dashboard.avgHourly') }}</div>
           <div class="card-value">
-            Rs {{ formatMoney(summary?.avg_hourly) }}<span class="card-suffix">/hr</span>
+            {{ t('worker.pairCurrencyRs') }} {{ formatMoney(summary?.avg_hourly) }}<span class="card-suffix">{{ t('worker.hourlyRate') }}</span>
           </div>
 
-          <p class="card-helper">Using logged shift hours</p>
+          <p class="card-helper">{{ t('worker.usingLoggedHours') }}</p>
         </article>
 
         <article class="summary-card">
-          <div class="card-label">Platform Takes</div>
-          <div class="card-value">{{ formatPercent(summary?.avg_commission_pct) }}%</div>
-          <p class="card-helper">Average deductions from gross pay</p>
+          <div class="card-label">{{ t('dashboard.platformTakes') }}</div>
+          <div class="card-value">{{ formatPercent(summary?.avg_commission_pct) }}{{ t('worker.percent') }}</div>
+          <p class="card-helper">{{ t('worker.platformCuts') }}</p>
         </article>
       </section>
 
@@ -49,13 +49,13 @@
 
       <section class="chart-card">
         <div class="chart-header">
-          <h2>Weekly net earnings</h2>
-          <p>Real shift data for the last 30 days</p>
+          <h2>{{ t('dashboard.weeklyEarnings') }}</h2>
+          <p>{{ t('worker.realShiftData') }}</p>
         </div>
 
-        <div v-if="loading && !shifts.length" class="chart-state">Loading weekly trend...</div>
+        <div v-if="loading && !shifts.length" class="chart-state">{{ t('worker.loadingTrend') }}</div>
         <div v-else-if="!hasWeeklyData" class="chart-state">
-          No shifts in the last 30 days yet. Log a shift to start your earnings trendline.
+          {{ t('worker.noShiftsLast30') }}
         </div>
 
         <div v-else class="chart-shell">
@@ -66,8 +66,8 @@
             role="img"
             aria-labelledby="weekly-net-title weekly-net-desc"
           >
-            <title id="weekly-net-title">Weekly net earnings line chart</title>
-            <desc id="weekly-net-desc">Net earnings grouped by week over the last 30 days.</desc>
+            <title id="weekly-net-title">{{ t('worker.weeklyNetTitle') }}</title>
+            <desc id="weekly-net-desc">{{ t('worker.weeklyNetDesc') }}</desc>
 
             <defs>
               <linearGradient id="weeklyAreaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -129,20 +129,20 @@
       <!-- City Median Comparison -->
       <section class="comparison-card" v-if="summary">
         <div class="comparison-header">
-          <h2>City Comparison</h2>
+          <h2>{{ t('dashboard.cityComparison') }}</h2>
           <button
             class="ghost-btn"
             type="button"
             :disabled="!latestPlatform || loading"
             @click="refreshCityMedian"
           >
-            Refresh
+            {{ t('worker.refresh') }}
           </button>
         </div>
 
         <div v-if="cityMedian?.median_hourly" class="comparison-content">
-          <p>City median hourly: <strong>PKR {{ formatMoney(cityMedian.median_hourly) }}</strong></p>
-          <p>Your avg hourly: <strong>PKR {{ formatMoney(summary.avg_hourly) }}</strong></p>
+          <p>{{ t('worker.cityMedianLabel') }} <strong>{{ t('worker.pairCurrencyPkr') }} {{ formatMoney(cityMedian.median_hourly) }}</strong></p>
+          <p>{{ t('worker.yourAvgLabel') }} <strong>{{ t('worker.pairCurrencyPkr') }} {{ formatMoney(summary.avg_hourly) }}</strong></p>
 
           <div
             :class="[
@@ -154,26 +154,26 @@
           >
             {{
               Number(summary.avg_hourly || 0) >= Number(cityMedian.median_hourly || 0)
-                ? 'Above city median ✓'
-                : 'Below city median — keep tracking trends'
+                ? t('worker.aboveMedian')
+                : t('worker.belowMedian')
             }}
           </div>
         </div>
 
-        <p v-else class="comparison-empty">Not enough city data yet for this platform.</p>
+        <p v-else class="comparison-empty">{{ t('worker.notEnoughData') }}</p>
       </section>
 
       <section class="anomaly-card">
         <div class="comparison-header">
-          <h2>Anomaly Analysis</h2>
+          <h2>{{ t('dashboard.anomalyAnalysis') }}</h2>
           <button class="ghost-btn" type="button" :disabled="anomalyLoading" @click="runAnomalyScan">
-            {{ anomalyLoading ? 'Scanning...' : 'Rescan' }}
+            {{ anomalyLoading ? t('worker.scanning') : t('dashboard.rescan') }}
           </button>
         </div>
 
         <div class="anomaly-summary">
           <p class="anomaly-summary-line">
-            {{ anomalyLoading ? 'Checking your recent shifts for unusual patterns...' : anomalyReport.summary }}
+            {{ anomalyLoading ? t('worker.checkingPatterns') : anomalyReport.summary }}
           </p>
           <p class="anomaly-summary-line">{{ anomalyReport.publicApiDescription }}</p>
           <p v-if="anomalyReport.serviceWarning" class="anomaly-warning">
@@ -203,50 +203,50 @@
           </article>
         </div>
 
-        <p v-else class="comparison-empty">No anomaly entries to show right now.</p>
+        <p v-else class="comparison-empty">{{ t('worker.noAnomalies') }}</p>
 
         <p v-if="anomalyScannedAt" class="comparison-empty">
-          Last scan: {{ formatScanTime(anomalyScannedAt) }}
+          {{ t('worker.lastScan') }} {{ formatScanTime(anomalyScannedAt) }}
         </p>
       </section>
 
       <!-- Recent Shifts -->
       <section class="table-card">
         <div class="table-header">
-          <h2>Recent Shifts</h2>
-          <NuxtLink to="/shifts" class="table-link">View all</NuxtLink>
+          <h2>{{ t('dashboard.recentShifts') }}</h2>
+          <NuxtLink to="/shifts" class="table-link">{{ t('dashboard.viewAll') }}</NuxtLink>
         </div>
 
-        <div v-if="loading" class="table-loading">Loading shifts...</div>
+        <div v-if="loading" class="table-loading">{{ t('worker.loadingShifts') }}</div>
 
         <div v-else-if="shiftsError" class="table-empty">{{ shiftsError }}</div>
 
         <div v-else-if="!shifts.length" class="table-empty">
-          No shifts logged yet. Start by creating your first shift entry.
+          {{ t('worker.noShiftsYet') }}
         </div>
 
         <div v-else class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Platform</th>
-                <th>Gross</th>
-                <th>Net</th>
-                <th>Commission</th>
-                <th>Verification</th>
+                <th>{{ t('shifts.date') }}</th>
+                <th>{{ t('shifts.platform') }}</th>
+                <th>{{ t('shifts.gross') }}</th>
+                <th>{{ t('shifts.net') }}</th>
+                <th>{{ t('shifts.commission') }}</th>
+                <th>{{ t('shifts.verification') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="s in shifts.slice(0, 10)" :key="s.id">
                 <td>{{ s.shift_date }}</td>
                 <td>{{ s.platform }}</td>
-                <td>PKR {{ formatMoney(s.gross_earned) }}</td>
-                <td>PKR {{ formatMoney(s.net_received) }}</td>
-                <td>{{ commissionPct(s) }}%</td>
+                <td>{{ t('worker.pairCurrencyPkr') }} {{ formatMoney(s.gross_earned) }}</td>
+                <td>{{ t('worker.pairCurrencyPkr') }} {{ formatMoney(s.net_received) }}</td>
+                <td>{{ commissionPct(s) }}{{ t('worker.percent') }}</td>
                 <td>
                   <span :class="['status-pill', normalizeStatus(s.verification_status)]">
-                    {{ s.verification_status || 'unverified' }}
+                    {{ s.verification_status || t('worker.unverified') }}
                   </span>
                 </td>
               </tr>
@@ -260,34 +260,29 @@
         <NuxtLink to="/shifts/log" class="quick-link-card">
           <span class="icon">add_circle</span>
           <div>
-            <h3>Log a Shift</h3>
-            <p>Add new earnings and deductions.</p>
+            <h3>{{ t('worker.logShiftTitle') }}</h3>
+            <p>{{ t('worker.logShiftDesc') }}</p>
           </div>
         </NuxtLink>
 
         <NuxtLink to="/grievances/new" class="quick-link-card">
           <span class="icon">campaign</span>
           <div>
-            <h3>Post Grievance</h3>
-            <p>Report issues and raise platform concerns.</p>
+            <h3>{{ t('worker.postGrievanceTitle') }}</h3>
+            <p>{{ t('worker.postGrievanceDesc') }}</p>
           </div>
         </NuxtLink>
 
         <NuxtLink to="/certificate" class="quick-link-card">
           <span class="icon">description</span>
           <div>
-            <h3>Income Certificate</h3>
-            <p>Generate and print verified earnings report.</p>
+            <h3>{{ t('worker.incomeCertTitle') }}</h3>
+            <p>{{ t('worker.incomeCertDesc') }}</p>
           </div>
         </NuxtLink>
       </section>
     </main>
 
-    <div class="support-fab">
-      <button type="button">
-        <span class="icon">help_outline</span>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -297,6 +292,7 @@ definePageMeta({ middleware: 'auth' as any })
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useShiftsStore } from '../../stores/shifts'
+import { useLanguage } from '~/composables/useLanguage'
 
 type ShiftLike = {
   shift_date?: string | null
@@ -338,8 +334,17 @@ const chartDims = {
   bottom: 258,
 } as const
 
+type SessionSnapshot = {
+  id: string
+  email: string | null
+  created_at: string | null
+  user_metadata: Record<string, any>
+  app_metadata: Record<string, any>
+}
+
 const shiftsStore = useShiftsStore()
 const supabase = useSupabaseClient()
+const { t } = useLanguage()
 const {
   shifts,
   shiftsError,
@@ -775,7 +780,16 @@ const runAnomalyScan = async () => {
 
 const hydrateSessionUser = async () => {
   const { data } = await supabase.auth.getSession()
-  sessionUser.value = data.session?.user || null
+  const currentUser = data.session?.user || null
+  sessionUser.value = currentUser
+    ? {
+        id: String(currentUser.id || ''),
+        email: typeof currentUser.email === 'string' ? currentUser.email : null,
+        created_at: typeof currentUser.created_at === 'string' ? currentUser.created_at : null,
+        user_metadata: { ...(currentUser.user_metadata || {}) },
+        app_metadata: { ...(currentUser.app_metadata || {}) },
+      }
+    : null
 }
 
 onMounted(async () => {
@@ -1436,41 +1450,6 @@ th {
 .quick-link-card:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-primary) 20%, transparent);
-}
-
-.support-fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  z-index: 50;
-}
-.support-fab button {
-  width: 3.5rem;
-  height: 3.5rem;
-  background-color: var(--fg-surface);
-  box-shadow: var(--fg-shadow);
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--fg-primary);
-  border: 1px solid var(--fg-border);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.support-fab button:hover {
-  background-color: var(--fg-primary);
-  color: #f2f1ff;
-}
-
-.support-fab .icon {
-  font-size: 1.5rem;
-  transition: transform 0.3s;
-}
-
-.support-fab button:hover .icon {
-  transform: scale(1.1);
 }
 
 /* Reduced motion */
