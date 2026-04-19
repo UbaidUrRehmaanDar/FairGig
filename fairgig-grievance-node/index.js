@@ -58,6 +58,11 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '1mb' }))
 
+// --- DEBUG ROUTE: Place at the top for instant liveness check ---
+app.get('/test-me', (req, res) => {
+  res.json({ message: "If you see this, the server is alive and routing works!" })
+})
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.PGSSLMODE || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -398,8 +403,15 @@ app.patch(GRIEVANCES_ESCALATE_ROUTES, requireRole('advocate'), async (req, res) 
   }
 })
 
+
 app.use((error, _req, res, _next) => {
   res.status(500).json({ detail: error?.message || 'Internal server error' })
+})
+
+// --- CATCH-ALL 404 LOGGER: Place at the very bottom ---
+app.use((req, res) => {
+  console.log(`404 occurred for: ${req.method} ${req.url}`)
+  res.status(404).send(`Route ${req.url} not found on this server.`)
 })
 
 app.listen(port, '0.0.0.0', () => {
