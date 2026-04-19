@@ -192,6 +192,10 @@ const requireAuth = async (req, res, next) => {
   }
 }
 
+app.get('/', (_req, res) => {
+  res.json({ message: 'Grievance Service Node.js is active' })
+})
+
 app.get(HEALTH_ROUTES, async (_req, res) => {
   res.json({ status: 'ok', service: 'fairgig-grievance-node' })
 })
