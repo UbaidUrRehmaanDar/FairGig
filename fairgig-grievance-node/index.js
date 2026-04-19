@@ -50,12 +50,8 @@ const allowedOrigins = Array.from(
   ])
 )
 
-app.use(cors({
-  origin: allowedOrigins.length ? allowedOrigins : true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-}))
+// DEMO: wide-open CORS so any frontend can reach this service
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PATCH', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'Accept'] }))
 app.use(express.json({ limit: '1mb' }))
 
 // --- DEBUG ROUTE: Place at the top for instant liveness check ---
@@ -82,17 +78,29 @@ const serializeRow = (row) => {
   return output
 }
 
-const ALLOWED_PLATFORMS = new Set(['Careem', 'InDrive', 'Bykea', 'Foodpanda', 'Cheetay', 'Other'])
-const ALLOWED_CATEGORIES = new Set(['commission_change', 'deactivation', 'payment_delay', 'other'])
+const ALLOWED_PLATFORMS = new Set(['Careem', 'InDrive', 'Bykea', 'Foodpanda', 'Cheetay', 'Other', 'careem', 'indrive', 'bykea', 'foodpanda', 'cheetay', 'other'])
+const ALLOWED_CATEGORIES = new Set(['commission_change', 'deactivation', 'payment_delay', 'other', 'commission change', 'payment delay'])
 const ALLOWED_FILTER_STATUS = new Set(['open', 'escalated', 'resolved'])
 
 const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim()
 
 const validateUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim())
 
+const normalizeCategory = (raw) => {
+  const map = { 'commission change': 'commission_change', 'payment delay': 'payment_delay' }
+  const s = normalizeText(raw).toLowerCase()
+  return map[s] || s
+}
+
+const normalizePlatform = (raw) => {
+  const s = normalizeText(raw)
+  // Capitalize first letter to match allowed set
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
+
 const validateGrievancePayload = (payload) => {
-  const platform = normalizeText(payload?.platform)
-  const category = normalizeText(payload?.category).toLowerCase()
+  const platform = normalizePlatform(payload?.platform)
+  const category = normalizeCategory(payload?.category)
   const title = normalizeText(payload?.title)
   const description = normalizeText(payload?.description)
   const tags = Array.isArray(payload?.tags)
